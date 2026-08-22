@@ -14,7 +14,7 @@ using namespace carciofo;
  * feedback goes to unity, so whatever is in there at that moment stays there.
  * B2 folds an octave up copy of the tank output back into its own input,
  * which is where the shimmer comes from. The octave path keeps running while
- * the tank is frozen, so holding both gives a drone that climbs on its own.
+ * the tank is frozen, so holding both gives a drone that builds by itself.
  * Both latch, press again to leave.
  *
  * P1 dry level    P2 wet level
@@ -32,6 +32,12 @@ static const float kMaxDecay = 0.98f;
 // The octave path adds gain of its own, so the tank has to give some back.
 static const float kMaxDecayShimmer = 0.90f;
 static const float kShimmerSend = 0.50f;
+/* How hot the tail is allowed to get before the octave send is pulled back.
+   A frozen tank plus the octave path settles rather than runs away, but it
+   settles somewhere that depends on the material and it can land above full
+   scale, so the level is measured and capped. Set high enough that it only
+   catches the peaks and leaves the build up alone. */
+static const float kShimmerCeiling = 0.80f;
 
 static const float kFreezeFeedback = 1.00f;
 // A lossless tank cannot take the octave path on top of it, the level would
@@ -41,8 +47,10 @@ static const float kFreezeFeedbackShimmer = 0.99f;
 // so the tone control steps aside while the tank is frozen.
 static const float kFreezeTone = 18000.f;
 
-// One pole coefficient for the send ramps, roughly 40 ms at 48 kHz.
+// One pole coefficients, roughly 40 ms for the send ramps and 200 ms for the
+// tail level, both at 48 kHz.
 static const float kSmoothing = 0.0005f;
+static const float kEnvSmoothing = 0.0001f;
 
 static Carciofo hw;
 
@@ -57,7 +65,7 @@ static float sendTarget = 1.f, shimmerTarget;
 static float send = 1.f, shimmer;
 
 // Previous output of the tank, this is what the octave path picks up.
-static float tailLeft, tailRight;
+static float tailLeft, tailRight, tailEnv;
 
 void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out,
                    size_t size) {
@@ -75,9 +83,14 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out,
     float octaveL = dcLeft.Process(SoftClip(octaveLeft.Process(tailLeft)));
     float octaveR = dcRight.Process(SoftClip(octaveRight.Process(tailRight)));
 
+    tailEnv +=
+        kEnvSmoothing * (fmaxf(fabsf(tailLeft), fabsf(tailRight)) - tailEnv);
+    float octaveGain = shimmer;
+    if (tailEnv > kShimmerCeiling) octaveGain *= kShimmerCeiling / tailEnv;
+
     // Only the dry send is gated, the octave path feeds a frozen tank too.
-    float sendL = dryL * send + octaveL * shimmer;
-    float sendR = dryR * send + octaveR * shimmer;
+    float sendL = dryL * send + octaveL * octaveGain;
+    float sendR = dryR * send + octaveR * octaveGain;
     tank.Process(sendL, sendR, &tailLeft, &tailRight);
 
     out[0][i] = dryL * dryLevel + tailLeft * wetLevel;
