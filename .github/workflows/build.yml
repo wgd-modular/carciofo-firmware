@@ -1,0 +1,11 @@
+name: Build Firmwares
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    uses: ./.github/workflows/build-firmwares.yml
+    permissions:
+      contents: write
