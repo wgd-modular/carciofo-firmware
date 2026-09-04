@@ -356,6 +356,8 @@ static void UpdateLed() {
 }
 
 int main(void) {
+  __set_FPSCR(__get_FPSCR() | (1UL << 24));
+
   hw.Init();
   float sampleRate = hw.SampleRate();
 
