@@ -41,12 +41,10 @@ body {
 .hero::after {
   content: "";
   position: absolute;
-  inset: auto 0 0 0;
-  height: 14px;
-  background:
-    linear-gradient(135deg, var(--limone) 25%, transparent 25%) -7px 0/14px 14px,
-    linear-gradient(225deg, var(--limone) 25%, transparent 25%) -7px 0/14px 14px,
-    var(--cobalt);
+  inset: auto 0 -8px 0;
+  height: 26px;
+  background: url("sawtooth-hero.svg") left bottom repeat-x;
+  background-size: 88px 26px;
 }
 
 .plaque {
@@ -170,11 +168,10 @@ main { max-width: 1060px; margin: 0 auto; padding: 44px 24px 60px; }
 .card-head::after {
   content: "";
   position: absolute;
-  inset: auto 0 0 0;
-  height: 7px;
-  background:
-    linear-gradient(135deg, rgba(250,243,227,0.85) 25%, transparent 25%) -3.5px 0/7px 7px,
-    linear-gradient(225deg, rgba(250,243,227,0.85) 25%, transparent 25%) -3.5px 0/7px 7px;
+  inset: auto 0 -1px 0;
+  height: 9px;
+  background: url("sawtooth-card.svg") left bottom repeat-x;
+  background-size: 20px 9px;
 }
 .card-head .fw-mark {
   position: absolute;
