@@ -219,14 +219,14 @@ struct Channel {
         break;
       case HAT:
         if (f == FLAVOR_808) {
-          hh808.SetFreq(Expo(t, 1500.f, 8000.f));
+          hh808.SetFreq(Expo(t, 2000.f, 6000.f));
           hh808.SetDecay(0.90f * d);
-          hh808.SetTone(0.55f);
-          hh808.SetNoisiness(0.80f);
+          hh808.SetTone(0.32f + 0.55f * t);
+          hh808.SetNoisiness(0.62f);
         } else {
-          hh909.SetFreq(Expo(t, 1500.f, 8000.f));
+          hh909.SetFreq(Expo(t, 2400.f, 7000.f));
           hh909.SetDecay(0.90f * d);
-          hh909.SetTone(0.70f);
+          hh909.SetTone(0.45f + 0.42f * t);
           hh909.SetNoisiness(0.55f);
         }
         break;
