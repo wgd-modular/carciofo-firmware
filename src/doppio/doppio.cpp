@@ -13,8 +13,9 @@ enum Flavor { FLAVOR_808 = 0, FLAVOR_909, kNumFlavors };
 using Hat808 = HiHat<SquareNoise, SwingVCA>;
 using Hat909 = HiHat<RingModNoise, LinearVCA>;
 
-static const float kTrigHigh = 0.30f;
-static const float kTrigLow = 0.15f;
+static const float kTrigMargin = 0.25f;
+static const float kTrigRelease = 0.10f;
+static const int kTrigWarmup = 96;
 static const float kAuditionVel = 0.85f;
 
 static const int kClapBursts = 4;
@@ -52,6 +53,8 @@ struct Channel {
   float decay = 0.5f;
 
   bool triggerArmed = false;
+  float trigBaseline = 0.5f;
+  int warmup = kTrigWarmup;
   float auditionVel = 0.f;
   bool longHandled = false;
 
@@ -191,15 +194,23 @@ struct Channel {
   }
 
   void DetectTrigger(float cv) {
-    if (!triggerArmed && cv > kTrigHigh) {
-      triggerArmed = true;
-      Fire(Clamp(0.40f + 0.60f * cv, 0.f, 1.f));
-    } else if (triggerArmed && cv < kTrigLow) {
-      triggerArmed = false;
-    }
     if (auditionVel > 0.f) {
       Fire(auditionVel);
       auditionVel = 0.f;
+    }
+    if (warmup > 0) {
+      trigBaseline += 0.05f * (cv - trigBaseline);
+      warmup--;
+      return;
+    }
+    if (!triggerArmed) {
+      trigBaseline += 0.01f * (cv - trigBaseline);
+      if (cv > trigBaseline + kTrigMargin) {
+        triggerArmed = true;
+        Fire(Clamp(0.40f + 1.20f * (cv - trigBaseline), 0.40f, 1.f));
+      }
+    } else if (cv < trigBaseline + kTrigRelease) {
+      triggerArmed = false;
     }
   }
 
