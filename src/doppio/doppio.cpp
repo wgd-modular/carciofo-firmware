@@ -101,6 +101,8 @@ struct Channel {
   int settleMs;
   bool longHandled;
 
+  float snareEnv;
+  float snareEnvMult;
   float clapEnv;
   float clapTailMult;
   int clapSpikesLeft;
@@ -128,6 +130,8 @@ struct Channel {
     baselineSettled = false;
     settleMs = 100;
     longHandled = false;
+    snareEnv = 0.f;
+    snareEnvMult = 0.999f;
     clapEnv = 0.f;
     clapTailMult = 0.99f;
     clapSpikesLeft = 0;
@@ -183,13 +187,13 @@ struct Channel {
       case KICK:
         if (f == FLAVOR_808) {
           float f0 = Expo(t, 30.f, 120.f);
-          float res = 0.45f + 0.535f * d;
+          float res = 0.45f + 0.52f * d;
           float q = res * sampleRate / (0.4f * f0);
           bd808.SetFreq(f0);
           bd808.SetDecay(1.5f * log2f(q / 1500.f) + 1.f);
-          bd808.SetTone(0.50f);
-          bd808.SetSelfFmAmount(0.35f);
-          bd808.SetAttackFmAmount(0.40f);
+          bd808.SetTone(0.45f);
+          bd808.SetSelfFmAmount(0.60f);
+          bd808.SetAttackFmAmount(0.60f);
         } else {
           bd909.SetFreq(Expo(t, 30.f, 120.f));
           bd909.SetDecay(0.05f + 1.00f * d);
@@ -205,6 +209,7 @@ struct Channel {
           sd808.SetDecay(0.10f + 0.90f * d);
           sd808.SetSnappy(0.65f);
           sd808.SetTone(0.50f);
+          snareEnvMult = expf(-1.f / (Expo(d, 0.04f, 0.45f) * sampleRate));
         } else {
           sd909.SetFreq(Expo(t, 120.f, 320.f));
           sd909.SetDecay(0.10f + 0.90f * d);
@@ -262,6 +267,7 @@ struct Channel {
           if (f == FLAVOR_808) {
             sd808.SetAccent(vel);
             sd808.Trig();
+            snareEnv = 1.f;
           } else {
             sd909.SetAccent(vel);
             sd909.Trig();
@@ -291,10 +297,15 @@ struct Channel {
       float s;
       switch (m) {
         case KICK:
-          s = f == FLAVOR_808 ? bd808.Process() : bd909.Process();
+          s = f == FLAVOR_808 ? bd808.Process() * 1.6f : bd909.Process();
           break;
         case SNARE:
-          s = f == FLAVOR_808 ? sd808.Process() : sd909.Process();
+          if (f == FLAVOR_808) {
+            s = sd808.Process() * snareEnv;
+            snareEnv *= snareEnvMult;
+          } else {
+            s = sd909.Process();
+          }
           break;
         case HAT:
           s = f == FLAVOR_808 ? hh808.Process() : hh909.Process();
