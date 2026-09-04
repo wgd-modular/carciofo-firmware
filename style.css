@@ -318,7 +318,7 @@ main { max-width: 1060px; margin: 0 auto; padding: 44px 24px 60px; }
 
 footer { margin-top: 30px; }
 .tiles-divider {
-  height: 44px;
+  height: 50px;
   background: url("border.svg") center top repeat-x;
   background-size: 176px 44px;
   border-top: 3px solid var(--cobalt);
