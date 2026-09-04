@@ -320,7 +320,7 @@ footer { margin-top: 30px; }
 .tiles-divider {
   height: 50px;
   background: url("border.svg") center top repeat-x;
-  background-size: 176px 44px;
+  background-size: 200px 44px;
   border-top: 3px solid var(--cobalt);
   border-bottom: 3px solid var(--cobalt);
 }
