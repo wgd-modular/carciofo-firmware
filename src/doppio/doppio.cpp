@@ -1,7 +1,43 @@
 #include <cmath>
+#include <cstdint>
 
 #include "../../lib/carciofo.h"
 #include "daisysp.h"
+
+extern "C" float powf(float base, float power) {
+  if (base <= 0.f) return 0.f;
+  union {
+    float f;
+    uint32_t i;
+  } vx = {base}, mx;
+  mx.i = (vx.i & 0x007fffffu) | 0x3f000000u;
+  float lg = vx.i * 1.1920929e-7f - 124.22552f - 1.4980303f * mx.f -
+             1.72588f / (0.35208872f + mx.f);
+  float p = power * lg;
+  if (p < -126.f) p = -126.f;
+  if (p > 126.f) p = 126.f;
+  float offset = p < 0.f ? 1.f : 0.f;
+  int w = static_cast<int>(p);
+  float z = p - w + offset;
+  union {
+    uint32_t i;
+    float f;
+  } v;
+  v.i = static_cast<uint32_t>(
+      8388608.f * (p + 121.274055f + 27.728023f / (4.8425255f - z) -
+                   1.4901291f * z));
+  return v.f;
+}
+
+extern "C" float sinf(float x) {
+  x -= 6.2831853f * floorf(x * 0.15915494f + 0.5f);
+  if (x > 1.5707963f) x = 3.1415927f - x;
+  if (x < -1.5707963f) x = -3.1415927f - x;
+  float x2 = x * x;
+  return x *
+         (0.9999966f + x2 * (-0.16664824f + x2 * (0.00830629f -
+                                                  x2 * 0.00018363f)));
+}
 
 using namespace daisy;
 using namespace daisysp;
@@ -137,13 +173,13 @@ struct Channel {
       case KICK:
         if (f == FLAVOR_808) {
           bd808.SetFreq(Expo(t, 30.f, 120.f));
-          bd808.SetDecay(0.10f + 0.90f * d);
+          bd808.SetDecay(0.05f + 1.05f * d);
           bd808.SetTone(0.50f);
           bd808.SetSelfFmAmount(0.35f);
           bd808.SetAttackFmAmount(0.40f);
         } else {
           bd909.SetFreq(Expo(t, 30.f, 120.f));
-          bd909.SetDecay(0.10f + 0.90f * d);
+          bd909.SetDecay(0.05f + 1.00f * d);
           bd909.SetTone(0.60f);
           bd909.SetDirtiness(0.25f);
           bd909.SetFmEnvelopeAmount(0.70f);
