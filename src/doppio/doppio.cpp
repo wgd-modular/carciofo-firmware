@@ -13,9 +13,11 @@ enum Flavor { FLAVOR_808 = 0, FLAVOR_909, kNumFlavors };
 using Hat808 = HiHat<SquareNoise, SwingVCA>;
 using Hat909 = HiHat<RingModNoise, LinearVCA>;
 
-static const float kTrigMargin = 0.25f;
-static const float kTrigRelease = 0.10f;
-static const int kTrigWarmup = 96;
+static const float kTrigRise = 0.20f;
+static const float kTrigRearm = 0.07f;
+static const float kBaselineSlew = 0.02f;
+static const int kRefractoryMs = 20;
+static const float kVelFloor = 0.35f;
 static const float kAuditionVel = 0.85f;
 
 static const int kClapBursts = 4;
@@ -28,11 +30,11 @@ static const uint32_t kSelectMs = 900;
 static const float kModelGain[kNumModels] = {0.90f, 0.85f, 0.70f, 0.90f, 0.80f};
 
 static const float kModelRgb[kNumModels][3] = {
-    {1.00f, 0.05f, 0.00f},  // kick, red
-    {1.00f, 0.45f, 0.00f},  // snare, amber
-    {0.00f, 0.80f, 1.00f},  // hat, cyan
-    {1.00f, 0.20f, 0.00f},  // tom, orange
-    {1.00f, 0.00f, 0.65f},  // clap, magenta
+    {1.00f, 0.05f, 0.00f},
+    {1.00f, 0.45f, 0.00f},
+    {0.00f, 0.80f, 1.00f},
+    {1.00f, 0.20f, 0.00f},
+    {1.00f, 0.00f, 0.65f},
 };
 
 static inline float Expo(float t, float lo, float hi) {
@@ -47,33 +49,54 @@ struct Channel {
   Hat808 hh808;
   Hat909 hh909;
 
-  int model = KICK;
-  int flavor = FLAVOR_808;
-  float tune = 0.5f;
-  float decay = 0.5f;
+  volatile int model;
+  volatile int flavor;
+  volatile float tune;
+  volatile float decay;
+  volatile int pendingTrig;
+  volatile float pendingVel;
 
-  bool triggerArmed = false;
-  float trigBaseline = 0.5f;
-  int warmup = kTrigWarmup;
-  float auditionVel = 0.f;
-  bool longHandled = false;
+  float baseline;
+  bool armed;
+  int refractoryMs;
+  bool baselineSettled;
+  int settleMs;
+  bool longHandled;
 
-  bool clapRunning = false;
-  int clapStep = 0;
-  int clapTimer = 0;
-  float clapVel = 0.f;
-  int clapInterval = 432;
+  bool clapRunning;
+  int clapStep;
+  int clapTimer;
+  float clapVel;
+  int clapInterval;
 
-  uint32_t flashTime = 0;
-  float flashVel = 0.f;
-  int flashModel = KICK;
-  uint32_t selectTime = 0;
-
-  float sampleRate = 48000.f;
+  uint32_t flashTime;
+  float flashVel;
+  int flashModel;
+  uint32_t selectTime;
 
   void Init(float sr) {
-    sampleRate = sr;
+    model = KICK;
+    flavor = FLAVOR_808;
+    tune = 0.5f;
+    decay = 0.5f;
+    pendingTrig = 0;
+    pendingVel = 0.f;
+    baseline = 0.5f;
+    armed = false;
+    refractoryMs = 0;
+    baselineSettled = false;
+    settleMs = 100;
+    longHandled = false;
+    clapRunning = false;
+    clapStep = 0;
+    clapTimer = 0;
+    clapVel = 0.f;
     clapInterval = static_cast<int>(kClapIntervalMs * 0.001f * sr);
+    flashTime = 0;
+    flashVel = 0.f;
+    flashModel = KICK;
+    selectTime = 0;
+
     bd808.Init(sr);
     bd909.Init(sr);
     sd808.Init(sr);
@@ -82,18 +105,45 @@ struct Channel {
     hh909.Init(sr);
   }
 
-  void ApplyParams() {
-    switch (model) {
+  void PollTrigger(float cv) {
+    if (refractoryMs > 0) refractoryMs--;
+    if (settleMs > 0) {
+      settleMs--;
+      baseline += 0.2f * (cv - baseline);
+      return;
+    }
+    if (!armed) {
+      baseline += kBaselineSlew * (cv - baseline);
+      if (refractoryMs == 0 && cv > baseline + kTrigRise) {
+        armed = true;
+        refractoryMs = kRefractoryMs;
+        Fire(Clamp(kVelFloor + 1.3f * (cv - baseline), kVelFloor, 1.f));
+      }
+    } else if (cv < baseline + kTrigRearm) {
+      armed = false;
+    }
+  }
+
+  void Fire(float vel) {
+    flashTime = System::GetNow();
+    flashVel = vel;
+    flashModel = model;
+    pendingVel = vel;
+    pendingTrig = 1;
+  }
+
+  void ApplyParams(int m, int f, float t, float d) {
+    switch (m) {
       case KICK:
-        if (flavor == FLAVOR_808) {
-          bd808.SetFreq(Expo(tune, 30.f, 120.f));
-          bd808.SetDecay(0.10f + 0.90f * decay);
+        if (f == FLAVOR_808) {
+          bd808.SetFreq(Expo(t, 30.f, 120.f));
+          bd808.SetDecay(0.10f + 0.90f * d);
           bd808.SetTone(0.50f);
           bd808.SetSelfFmAmount(0.35f);
           bd808.SetAttackFmAmount(0.40f);
         } else {
-          bd909.SetFreq(Expo(tune, 30.f, 120.f));
-          bd909.SetDecay(0.10f + 0.90f * decay);
+          bd909.SetFreq(Expo(t, 30.f, 120.f));
+          bd909.SetDecay(0.10f + 0.90f * d);
           bd909.SetTone(0.60f);
           bd909.SetDirtiness(0.25f);
           bd909.SetFmEnvelopeAmount(0.70f);
@@ -101,15 +151,15 @@ struct Channel {
         }
         break;
       case TOM:
-        if (flavor == FLAVOR_808) {
-          bd808.SetFreq(Expo(tune, 80.f, 400.f));
-          bd808.SetDecay(0.30f + 0.70f * decay);
+        if (f == FLAVOR_808) {
+          bd808.SetFreq(Expo(t, 80.f, 400.f));
+          bd808.SetDecay(0.30f + 0.70f * d);
           bd808.SetTone(0.70f);
           bd808.SetSelfFmAmount(0.10f);
           bd808.SetAttackFmAmount(0.20f);
         } else {
-          bd909.SetFreq(Expo(tune, 80.f, 400.f));
-          bd909.SetDecay(0.30f + 0.70f * decay);
+          bd909.SetFreq(Expo(t, 80.f, 400.f));
+          bd909.SetDecay(0.30f + 0.70f * d);
           bd909.SetTone(0.70f);
           bd909.SetDirtiness(0.10f);
           bd909.SetFmEnvelopeAmount(0.30f);
@@ -117,27 +167,27 @@ struct Channel {
         }
         break;
       case SNARE:
-        if (flavor == FLAVOR_808) {
-          sd808.SetFreq(Expo(tune, 120.f, 320.f));
-          sd808.SetDecay(0.10f + 0.90f * decay);
+        if (f == FLAVOR_808) {
+          sd808.SetFreq(Expo(t, 120.f, 320.f));
+          sd808.SetDecay(0.10f + 0.90f * d);
           sd808.SetSnappy(0.65f);
           sd808.SetTone(0.50f);
         } else {
-          sd909.SetFreq(Expo(tune, 120.f, 320.f));
-          sd909.SetDecay(0.10f + 0.90f * decay);
+          sd909.SetFreq(Expo(t, 120.f, 320.f));
+          sd909.SetDecay(0.10f + 0.90f * d);
           sd909.SetSnappy(0.70f);
           sd909.SetFmAmount(0.30f);
         }
         break;
       case HAT:
-        if (flavor == FLAVOR_808) {
-          hh808.SetFreq(Expo(tune, 1500.f, 8000.f));
-          hh808.SetDecay(0.90f * decay);
+        if (f == FLAVOR_808) {
+          hh808.SetFreq(Expo(t, 1500.f, 8000.f));
+          hh808.SetDecay(0.90f * d);
           hh808.SetTone(0.55f);
           hh808.SetNoisiness(0.80f);
         } else {
-          hh909.SetFreq(Expo(tune, 1500.f, 8000.f));
-          hh909.SetDecay(0.90f * decay);
+          hh909.SetFreq(Expo(t, 1500.f, 8000.f));
+          hh909.SetDecay(0.90f * d);
           hh909.SetTone(0.70f);
           hh909.SetNoisiness(0.55f);
         }
@@ -147,86 +197,93 @@ struct Channel {
     }
   }
 
-  void TrigVoice(float vel) {
-    switch (model) {
-      case KICK:
-      case TOM:
-        if (flavor == FLAVOR_808) {
-          bd808.SetAccent(vel);
-          bd808.Trig();
-        } else {
-          bd909.SetAccent(vel);
-          bd909.Trig();
-        }
-        break;
-      case SNARE:
-        if (flavor == FLAVOR_808) {
-          sd808.SetAccent(vel);
-          sd808.Trig();
-        } else {
-          sd909.SetAccent(vel);
-          sd909.Trig();
-        }
-        break;
-      case HAT:
-        if (flavor == FLAVOR_808) {
-          hh808.SetAccent(vel);
-          hh808.Trig();
-        } else {
-          hh909.SetAccent(vel);
-          hh909.Trig();
-        }
-        break;
-      case CLAP:
-        clapVel = vel;
-        clapStep = 0;
-        clapTimer = 0;
-        clapRunning = true;
-        break;
-    }
-  }
+  void RenderBlock(float* out, size_t size) {
+    int m = model;
+    int f = flavor;
+    float t = tune;
+    float d = decay;
+    if (m < 0 || m >= kNumModels) m = KICK;
 
-  void Fire(float vel) {
-    flashTime = System::GetNow();
-    flashVel = vel;
-    flashModel = model;
-    TrigVoice(vel);
-  }
+    ApplyParams(m, f, t, d);
 
-  void DetectTrigger(float cv) {
-    if (auditionVel > 0.f) {
-      Fire(auditionVel);
-      auditionVel = 0.f;
-    }
-    if (warmup > 0) {
-      trigBaseline += 0.05f * (cv - trigBaseline);
-      warmup--;
-      return;
-    }
-    if (!triggerArmed) {
-      trigBaseline += 0.01f * (cv - trigBaseline);
-      if (cv > trigBaseline + kTrigMargin) {
-        triggerArmed = true;
-        Fire(Clamp(0.40f + 1.20f * (cv - trigBaseline), 0.40f, 1.f));
+    if (pendingTrig) {
+      pendingTrig = 0;
+      float vel = pendingVel;
+      switch (m) {
+        case KICK:
+        case TOM:
+          if (f == FLAVOR_808) {
+            bd808.SetAccent(vel);
+            bd808.Trig();
+          } else {
+            bd909.SetAccent(vel);
+            bd909.Trig();
+          }
+          break;
+        case SNARE:
+          if (f == FLAVOR_808) {
+            sd808.SetAccent(vel);
+            sd808.Trig();
+          } else {
+            sd909.SetAccent(vel);
+            sd909.Trig();
+          }
+          break;
+        case HAT:
+          if (f == FLAVOR_808) {
+            hh808.SetAccent(vel);
+            hh808.Trig();
+          } else {
+            hh909.SetAccent(vel);
+            hh909.Trig();
+          }
+          break;
+        case CLAP:
+          clapVel = vel;
+          clapStep = 0;
+          clapTimer = 0;
+          clapRunning = true;
+          break;
       }
-    } else if (cv < trigBaseline + kTrigRelease) {
-      triggerArmed = false;
+    }
+
+    for (size_t i = 0; i < size; i++) {
+      float s;
+      switch (m) {
+        case KICK:
+        case TOM:
+          s = f == FLAVOR_808 ? bd808.Process() : bd909.Process();
+          break;
+        case SNARE:
+          s = f == FLAVOR_808 ? sd808.Process() : sd909.Process();
+          break;
+        case HAT:
+          s = f == FLAVOR_808 ? hh808.Process() : hh909.Process();
+          break;
+        case CLAP:
+          s = ProcessClap(t, d, f);
+          break;
+        default:
+          s = 0.f;
+          break;
+      }
+      out[i] = SoftClip(s * kModelGain[m]);
     }
   }
 
-  float ProcessClap() {
+  float ProcessClap(float t, float d, int f) {
     if (clapRunning && clapTimer <= 0) {
       bool last = clapStep == kClapBursts - 1;
-      float burstDecay = last ? (0.15f + 0.50f * decay) : 0.06f;
-      if (flavor == FLAVOR_808) {
-        sd808.SetFreq(Expo(tune, 300.f, 1200.f));
+      float burstDecay = last ? (0.15f + 0.50f * d) : 0.06f;
+      if (f == FLAVOR_808) {
+        sd808.SetFreq(Expo(t, 300.f, 1200.f));
         sd808.SetSnappy(1.0f);
         sd808.SetTone(0.70f);
         sd808.SetDecay(burstDecay);
         sd808.SetAccent(clapVel);
         sd808.Trig();
       } else {
-        sd909.SetFreq(Expo(tune, 300.f, 1200.f));
+        sd909.SetFreq(Expo(t, 300.f, 1200.f));
         sd909.SetSnappy(1.0f);
         sd909.SetFmAmount(0.f);
         sd909.SetDecay(burstDecay);
@@ -240,30 +297,7 @@ struct Channel {
         clapTimer = clapInterval;
     }
     if (clapTimer > 0) clapTimer--;
-    return flavor == FLAVOR_808 ? sd808.Process() : sd909.Process();
-  }
-
-  float Process() {
-    float s;
-    switch (model) {
-      case KICK:
-      case TOM:
-        s = flavor == FLAVOR_808 ? bd808.Process() : bd909.Process();
-        break;
-      case SNARE:
-        s = flavor == FLAVOR_808 ? sd808.Process() : sd909.Process();
-        break;
-      case HAT:
-        s = flavor == FLAVOR_808 ? hh808.Process() : hh909.Process();
-        break;
-      case CLAP:
-        s = ProcessClap();
-        break;
-      default:
-        s = 0.f;
-        break;
-    }
-    return SoftClip(s * kModelGain[model]);
+    return f == FLAVOR_808 ? sd808.Process() : sd909.Process();
   }
 };
 
@@ -272,36 +306,31 @@ static Channel chA, chB;
 
 void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out,
                    size_t size) {
-  chA.DetectTrigger(hw.GetCv(CV_1));
-  chB.DetectTrigger(hw.GetCv(CV_2));
-  for (size_t i = 0; i < size; i++) {
-    out[0][i] = chA.Process();
-    out[1][i] = chB.Process();
-  }
+  chA.RenderBlock(out[0], size);
+  chB.RenderBlock(out[1], size);
 }
 
 static void UpdateChannel(Channel& ch, Button button, Pot tunePot,
-                          Pot decayPot) {
+                          Pot decayPot, Cv cv) {
   ch.tune = hw.GetPot(tunePot);
   ch.decay = hw.GetPot(decayPot);
+  ch.PollTrigger(hw.GetCv(cv));
 
   if (hw.button[button].RisingEdge()) ch.longHandled = false;
 
   if (hw.button[button].Pressed() && !ch.longHandled &&
       hw.button[button].TimeHeldMs() >= kLongPressMs) {
-    ch.flavor ^= 1;
+    ch.flavor = ch.flavor == FLAVOR_808 ? FLAVOR_909 : FLAVOR_808;
     ch.longHandled = true;
     ch.selectTime = System::GetNow();
-    ch.auditionVel = kAuditionVel;
+    ch.Fire(kAuditionVel);
   }
 
   if (hw.button[button].FallingEdge() && !ch.longHandled) {
     ch.model = (ch.model + 1) % kNumModels;
     ch.selectTime = System::GetNow();
-    ch.auditionVel = kAuditionVel;
+    ch.Fire(kAuditionVel);
   }
-
-  ch.ApplyParams();
 }
 
 static void AddFlash(const Channel& ch, uint32_t now, float& r, float& g,
@@ -347,32 +376,39 @@ static void UpdateLed() {
   }
 
   float blend = 0.5f - 0.5f * cosf(TWOPI_F * (now % 3000) / 3000.f);
+  float breath = 0.5f - 0.5f * cosf(TWOPI_F * (now % 4000) / 4000.f);
   const float* a = kModelRgb[chA.model];
   const float* c = kModelRgb[chB.model];
-  float v = 0.10f;
+  float v = 0.04f + 0.10f * breath;
   hw.led.Set((a[0] + (c[0] - a[0]) * blend) * v,
              (a[1] + (c[1] - a[1]) * blend) * v,
              (a[2] + (c[2] - a[2]) * blend) * v);
 }
 
-int main(void) {
-  FPU->FPDSCR |= FPU_FPDSCR_FZ_Msk;
-  __set_FPSCR(__get_FPSCR() | FPU_FPDSCR_FZ_Msk);
+static void RunBootSweep() {
+  static const float steps[][3] = {
+      {1.f, 0.f, 0.f}, {0.f, 1.f, 0.f}, {0.f, 0.f, 1.f}, {1.f, 1.f, 1.f}};
+  for (size_t i = 0; i < sizeof(steps) / sizeof(steps[0]); i++) {
+    hw.led.Set(steps[i][0], steps[i][1], steps[i][2]);
+    hw.led.Update();
+    System::Delay(150);
+  }
+}
 
+int main(void) {
   hw.Init();
   float sampleRate = hw.SampleRate();
 
   chA.Init(sampleRate);
   chB.Init(sampleRate);
-  chA.ApplyParams();
-  chB.ApplyParams();
 
+  RunBootSweep();
   hw.StartAudio(AudioCallback);
 
   while (1) {
     hw.ProcessControls();
-    UpdateChannel(chA, BUTTON_1, POT_1, POT_3);
-    UpdateChannel(chB, BUTTON_2, POT_2, POT_4);
+    UpdateChannel(chA, BUTTON_1, POT_1, POT_3, CV_1);
+    UpdateChannel(chB, BUTTON_2, POT_2, POT_4, CV_2);
     UpdateLed();
     System::Delay(1);
   }

@@ -43,6 +43,7 @@ Tune sets the pitch of the drum, the metallic pitch on the hat and the noise col
 
 One light shared by both voices.
 
+- **On power up** it sweeps red, green, blue, white, so you know the firmware is running before anything is patched.
 - **On every trigger** it flashes the colour of the drum that fired, kick red, snare amber, hat cyan, tom orange, clap magenta, with the brightness on the velocity. Two hits at once blend.
 - **While you work a button** it holds that voice's current model as a steady colour, saturated for 808 and washed lighter for 909. Which voice it is you know from the button under your finger.
-- **At rest** it drifts slowly between the two voices' colours so a glance tells you what both sides are set to.
+- **At rest** it breathes slowly while drifting between the two voices' colours, so a glance tells you what both sides are set to and that the module is alive.
