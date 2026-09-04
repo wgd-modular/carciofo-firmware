@@ -356,7 +356,8 @@ static void UpdateLed() {
 }
 
 int main(void) {
-  __set_FPSCR(__get_FPSCR() | (1UL << 24));
+  FPU->FPDSCR |= FPU_FPDSCR_FZ_Msk;
+  __set_FPSCR(__get_FPSCR() | FPU_FPDSCR_FZ_Msk);
 
   hw.Init();
   float sampleRate = hw.SampleRate();
