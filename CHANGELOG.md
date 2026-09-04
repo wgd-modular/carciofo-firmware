@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/wgd-modular/carciofo-firmware/compare/v0.1.0...v0.2.0) (2026-09-04)
+
+
+### Features
+
+* Add Doppio, a dual drum voice firmware ([#3](https://github.com/wgd-modular/carciofo-firmware/issues/3)) ([cbe9b85](https://github.com/wgd-modular/carciofo-firmware/commit/cbe9b856f290e4ada53e1a28dc1f0c991e1d0c57))
+
 ## 0.1.0 (2026-08-24)
 
 
