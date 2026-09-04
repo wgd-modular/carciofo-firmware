@@ -43,7 +43,7 @@ using namespace daisy;
 using namespace daisysp;
 using namespace carciofo;
 
-enum Model { KICK = 0, SNARE, HAT, TOM, CLAP, kNumModels };
+enum Model { KICK = 0, SNARE, HAT, CLAP, kNumModels };
 enum Flavor { FLAVOR_808 = 0, FLAVOR_909, kNumFlavors };
 
 using Hat808 = HiHat<SquareNoise, SwingVCA>;
@@ -56,20 +56,20 @@ static const int kRefractoryMs = 20;
 static const float kVelFloor = 0.35f;
 static const float kAuditionVel = 0.85f;
 
-static const int kClapBursts = 4;
-static const float kClapIntervalMs = 9.f;
+static const float kClapSpikeMs = 10.5f;
+static const float kClapSpikeTau = 0.004f;
+static const float kClapTailLevel = 0.55f;
 
 static const uint32_t kLongPressMs = 320;
 static const uint32_t kFlashMs = 150;
 static const uint32_t kSelectMs = 900;
 
-static const float kModelGain[kNumModels] = {0.90f, 0.85f, 0.70f, 0.90f, 0.80f};
+static const float kModelGain[kNumModels] = {0.90f, 0.85f, 0.70f, 0.85f};
 
 static const float kModelRgb[kNumModels][3] = {
     {1.00f, 0.05f, 0.00f},
     {1.00f, 0.45f, 0.00f},
     {0.00f, 0.80f, 1.00f},
-    {1.00f, 0.20f, 0.00f},
     {1.00f, 0.00f, 0.65f},
 };
 
@@ -84,6 +84,8 @@ struct Channel {
   SyntheticSnareDrum sd909;
   Hat808 hh808;
   Hat909 hh909;
+  WhiteNoise clapNoise;
+  Svf clapFilter;
 
   volatile int model;
   volatile int flavor;
@@ -99,11 +101,14 @@ struct Channel {
   int settleMs;
   bool longHandled;
 
-  bool clapRunning;
-  int clapStep;
-  int clapTimer;
+  float clapEnv;
+  float clapTailMult;
+  int clapSpikesLeft;
+  int clapSpikeTimer;
+  int clapSpikeSamples;
+  bool clapInTail;
   float clapVel;
-  int clapInterval;
+  float sampleRate;
 
   uint32_t flashTime;
   float flashVel;
@@ -123,11 +128,14 @@ struct Channel {
     baselineSettled = false;
     settleMs = 100;
     longHandled = false;
-    clapRunning = false;
-    clapStep = 0;
-    clapTimer = 0;
+    clapEnv = 0.f;
+    clapTailMult = 0.99f;
+    clapSpikesLeft = 0;
+    clapSpikeTimer = 0;
+    clapSpikeSamples = static_cast<int>(kClapSpikeMs * 0.001f * sr);
+    clapInTail = false;
     clapVel = 0.f;
-    clapInterval = static_cast<int>(kClapIntervalMs * 0.001f * sr);
+    sampleRate = sr;
     flashTime = 0;
     flashVel = 0.f;
     flashModel = KICK;
@@ -139,6 +147,8 @@ struct Channel {
     sd909.Init(sr);
     hh808.Init(sr);
     hh909.Init(sr);
+    clapNoise.Init();
+    clapFilter.Init(sr);
   }
 
   void PollTrigger(float cv) {
@@ -172,8 +182,11 @@ struct Channel {
     switch (m) {
       case KICK:
         if (f == FLAVOR_808) {
-          bd808.SetFreq(Expo(t, 30.f, 120.f));
-          bd808.SetDecay(0.05f + 1.05f * d);
+          float f0 = Expo(t, 30.f, 120.f);
+          float res = 0.45f + 0.535f * d;
+          float q = res * sampleRate / (0.4f * f0);
+          bd808.SetFreq(f0);
+          bd808.SetDecay(1.5f * log2f(q / 1500.f) + 1.f);
           bd808.SetTone(0.50f);
           bd808.SetSelfFmAmount(0.35f);
           bd808.SetAttackFmAmount(0.40f);
@@ -184,22 +197,6 @@ struct Channel {
           bd909.SetDirtiness(0.25f);
           bd909.SetFmEnvelopeAmount(0.70f);
           bd909.SetFmEnvelopeDecay(0.40f);
-        }
-        break;
-      case TOM:
-        if (f == FLAVOR_808) {
-          bd808.SetFreq(Expo(t, 80.f, 400.f));
-          bd808.SetDecay(0.30f + 0.70f * d);
-          bd808.SetTone(0.70f);
-          bd808.SetSelfFmAmount(0.10f);
-          bd808.SetAttackFmAmount(0.20f);
-        } else {
-          bd909.SetFreq(Expo(t, 80.f, 400.f));
-          bd909.SetDecay(0.30f + 0.70f * d);
-          bd909.SetTone(0.70f);
-          bd909.SetDirtiness(0.10f);
-          bd909.SetFmEnvelopeAmount(0.30f);
-          bd909.SetFmEnvelopeDecay(0.30f);
         }
         break;
       case SNARE:
@@ -228,8 +225,14 @@ struct Channel {
           hh909.SetNoisiness(0.55f);
         }
         break;
-      case CLAP:
+      case CLAP: {
+        float centre = Expo(t, 800.f, 1900.f) * (f == FLAVOR_909 ? 1.3f : 1.f);
+        clapFilter.SetFreq(centre);
+        clapFilter.SetRes(f == FLAVOR_909 ? 0.45f : 0.60f);
+        float tail = Expo(d, 0.030f, 0.50f);
+        clapTailMult = expf(-1.f / (tail * sampleRate));
         break;
+      }
     }
   }
 
@@ -247,7 +250,6 @@ struct Channel {
       float vel = pendingVel;
       switch (m) {
         case KICK:
-        case TOM:
           if (f == FLAVOR_808) {
             bd808.SetAccent(vel);
             bd808.Trig();
@@ -276,18 +278,19 @@ struct Channel {
           break;
         case CLAP:
           clapVel = vel;
-          clapStep = 0;
-          clapTimer = 0;
-          clapRunning = true;
+          clapEnv = 1.f;
+          clapSpikesLeft = f == FLAVOR_909 ? 3 : 2;
+          clapSpikeTimer = clapSpikeSamples;
+          clapInTail = false;
           break;
       }
     }
 
+    float finiteCheck = 0.f;
     for (size_t i = 0; i < size; i++) {
       float s;
       switch (m) {
         case KICK:
-        case TOM:
           s = f == FLAVOR_808 ? bd808.Process() : bd909.Process();
           break;
         case SNARE:
@@ -297,43 +300,50 @@ struct Channel {
           s = f == FLAVOR_808 ? hh808.Process() : hh909.Process();
           break;
         case CLAP:
-          s = ProcessClap(t, d, f);
+          s = ProcessClap();
           break;
         default:
           s = 0.f;
           break;
       }
+      finiteCheck += s;
       out[i] = SoftClip(s * kModelGain[m]);
+    }
+    if (!(finiteCheck - finiteCheck == 0.f)) {
+      float sr = sampleRate;
+      bd808.Init(sr);
+      bd909.Init(sr);
+      sd808.Init(sr);
+      sd909.Init(sr);
+      hh808.Init(sr);
+      hh909.Init(sr);
+      clapFilter.Init(sr);
+      clapEnv = 0.f;
+      for (size_t i = 0; i < size; i++) out[i] = 0.f;
     }
   }
 
-  float ProcessClap(float t, float d, int f) {
-    if (clapRunning && clapTimer <= 0) {
-      bool last = clapStep == kClapBursts - 1;
-      float burstDecay = last ? (0.15f + 0.50f * d) : 0.06f;
-      if (f == FLAVOR_808) {
-        sd808.SetFreq(Expo(t, 300.f, 1200.f));
-        sd808.SetSnappy(1.0f);
-        sd808.SetTone(0.70f);
-        sd808.SetDecay(burstDecay);
-        sd808.SetAccent(clapVel);
-        sd808.Trig();
-      } else {
-        sd909.SetFreq(Expo(t, 300.f, 1200.f));
-        sd909.SetSnappy(1.0f);
-        sd909.SetFmAmount(0.f);
-        sd909.SetDecay(burstDecay);
-        sd909.SetAccent(clapVel);
-        sd909.Trig();
+  float ProcessClap() {
+    if (clapSpikesLeft > 0) {
+      clapEnv *= 1.f - 1.f / (kClapSpikeTau * sampleRate);
+      if (--clapSpikeTimer <= 0) {
+        clapSpikesLeft--;
+        if (clapSpikesLeft > 0) {
+          clapEnv = 1.f;
+          clapSpikeTimer = clapSpikeSamples;
+        } else {
+          clapEnv = kClapTailLevel;
+          clapInTail = true;
+        }
       }
-      clapStep++;
-      if (last)
-        clapRunning = false;
-      else
-        clapTimer = clapInterval;
+    } else if (clapInTail) {
+      clapEnv *= clapTailMult;
+      if (clapEnv < 1e-4f) clapInTail = false;
+    } else {
+      return 0.f;
     }
-    if (clapTimer > 0) clapTimer--;
-    return f == FLAVOR_808 ? sd808.Process() : sd909.Process();
+    clapFilter.Process(clapNoise.Process());
+    return SoftClip(clapFilter.Band() * clapEnv * clapVel * 4.0f);
   }
 };
 
