@@ -33,7 +33,7 @@ body {
 /* ---------- hero ---------- */
 
 .hero {
-  background: url("pattern.svg");
+  background: url("pattern.svg") left bottom repeat;
   background-size: 168px 168px;
   padding: 68px 24px 92px;
   position: relative;
@@ -318,9 +318,9 @@ main { max-width: 1060px; margin: 0 auto; padding: 44px 24px 60px; }
 
 footer { margin-top: 30px; }
 .tiles-divider {
-  height: 42px;
-  background: url("pattern.svg");
-  background-size: 84px 84px;
+  height: 44px;
+  background: url("border.svg") center top repeat-x;
+  background-size: 176px 44px;
   border-top: 3px solid var(--cobalt);
   border-bottom: 3px solid var(--cobalt);
 }
