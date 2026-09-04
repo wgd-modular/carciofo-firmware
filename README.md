@@ -5,9 +5,9 @@ A repository to collect different firmwares for the daisy-based Carciofo module,
 
 ## Flash your module
 
-The easiest way to get a firmware onto your module is the [Carciofo web flasher](https://wgd-modular.github.io/carciofo-firmware/). Open it in Google Chrome or Edge, connect the Daisy Seed over USB, hold BOOT and tap RESET to enter the bootloader, then pick a firmware and press flash. The page lists every firmware of the latest release together with its controls, so it always stays up to date on its own.
+The easiest way to get a firmware onto your module is the [Carciofo web flasher](https://wgd-modular.github.io/carciofo-firmware/). Open it in Google Chrome or Edge, connect the Daisy Seed over USB, hold BOOT and tap RESET to enter the bootloader, then pick a firmware and press flash. It lists every firmware of the latest release together with its controls, and can also flash a local `.bin` you built yourself.
 
-If you would rather flash by hand, every firmware is also pre-compiled and attached to the [latest release](https://github.com/wgd-modular/carciofo-firmware/releases/latest). Open the [Daisy Web Flasher](https://electro-smith.github.io/Programmer/) via Google Chrome and upload the `.bin` file to flash your seed.
+If you would rather flash by hand, every firmware is also pre-compiled and attached to the [latest release](https://github.com/wgd-modular/carciofo-firmware/releases/latest). Open the [Daisy Web Flasher](https://electro-smith.github.io/Programmer/) in Google Chrome or Edge and upload the `.bin` file to flash your seed.
 
 
 ## Controls
