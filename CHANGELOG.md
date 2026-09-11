@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/wgd-modular/carciofo-firmware/compare/v0.2.0...v0.2.1) (2026-09-11)
+
+
+### Bug Fixes
+
+* publish firmware binaries to gh-pages to fix web flasher CORS ([8de6d00](https://github.com/wgd-modular/carciofo-firmware/commit/8de6d005321217426576a6d0b6dfc110ccefa634))
+
 ## [0.2.0](https://github.com/wgd-modular/carciofo-firmware/compare/v0.1.0...v0.2.0) (2026-09-04)
 
 
