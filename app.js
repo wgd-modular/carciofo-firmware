@@ -86,7 +86,7 @@ function buildCard(asset, tag, accent) {
       </div>
     </div>`;
 
-  $(".flash-btn", card).addEventListener("click", () => flashAsset(asset, card));
+  $(".flash-btn", card).addEventListener("click", () => flashAsset(asset, tag, card));
 
   fetchReadme(fw, tag).then(md => {
     if (!md) {
@@ -237,12 +237,16 @@ function cardUi(card) {
   };
 }
 
-async function flashAsset(asset, card) {
+async function flashAsset(asset, tag, card) {
   const ui = cardUi(card);
   ui.start();
   try {
     ui.status("Downloading firmware…");
-    const res = await fetch(asset.browser_download_url);
+    // GitHub's release-asset download redirects to a storage host that sends
+    // no Access-Control-Allow-Origin header, so a cross-origin fetch() of
+    // asset.browser_download_url always fails CORS. The release workflow
+    // also mirrors each .bin under firmwares/<tag>/ on this same origin.
+    const res = await fetch(`firmwares/${tag}/${asset.name}`);
     if (!res.ok) throw new Error(`download failed (${res.status})`);
     const buffer = await res.arrayBuffer();
     await flashBuffer(buffer, ui);
