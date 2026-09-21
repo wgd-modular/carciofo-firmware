@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.0](https://github.com/wgd-modular/carciofo-firmware/compare/v0.2.0...v0.3.0) (2026-09-21)
+
+
+### Features
+
+* Add Battito In Acciaio, a percussive synth voice ([#7](https://github.com/wgd-modular/carciofo-firmware/issues/7)) ([d39b062](https://github.com/wgd-modular/carciofo-firmware/commit/d39b062c7ef5afa2e000844aee9d611a8a714b4d))
+
+
+### Bug Fixes
+
+* Catch short triggers in Doppio ([#8](https://github.com/wgd-modular/carciofo-firmware/issues/8)) ([8ac9a31](https://github.com/wgd-modular/carciofo-firmware/commit/8ac9a314358aa04f4a15d0ebf6937e920e3cf7a5))
+* publish firmware binaries to gh-pages to fix web flasher CORS ([8de6d00](https://github.com/wgd-modular/carciofo-firmware/commit/8de6d005321217426576a6d0b6dfc110ccefa634))
+
 ## [0.2.0](https://github.com/wgd-modular/carciofo-firmware/compare/v0.1.0...v0.2.0) (2026-09-04)
 
 
