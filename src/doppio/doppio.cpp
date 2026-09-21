@@ -51,7 +51,6 @@ using Hat909 = HiHat<RingModNoise, LinearVCA>;
 
 static const float kTrigRise = 0.20f;
 static const float kTrigRearm = 0.07f;
-static const float kBaselineSlew = 0.02f;
 static const int kRefractoryMs = 20;
 static const float kVelFloor = 0.35f;
 static const float kAuditionVel = 0.85f;
@@ -96,9 +95,9 @@ struct Channel {
 
   float baseline;
   bool armed;
-  int refractoryMs;
+  float refractory;
   bool baselineSettled;
-  int settleMs;
+  float settle;
   bool longHandled;
 
   float snareEnv;
@@ -126,9 +125,9 @@ struct Channel {
     pendingVel = 0.f;
     baseline = 0.5f;
     armed = false;
-    refractoryMs = 0;
+    refractory = 0.f;
     baselineSettled = false;
-    settleMs = 100;
+    settle = 100.f;
     longHandled = false;
     snareEnv = 0.f;
     snareEnvMult = 0.999f;
@@ -155,18 +154,18 @@ struct Channel {
     clapFilter.Init(sr);
   }
 
-  void PollTrigger(float cv) {
-    if (refractoryMs > 0) refractoryMs--;
-    if (settleMs > 0) {
-      settleMs--;
-      baseline += 0.2f * (cv - baseline);
+  void PollTrigger(float cv, float dtMs) {
+    if (refractory > 0.f) refractory -= dtMs;
+    if (settle > 0.f) {
+      settle -= dtMs;
+      baseline += (dtMs / 5.f) * (cv - baseline);
       return;
     }
     if (!armed) {
-      baseline += kBaselineSlew * (cv - baseline);
-      if (refractoryMs == 0 && cv > baseline + kTrigRise) {
+      baseline += (dtMs / 50.f) * (cv - baseline);
+      if (refractory <= 0.f && cv > baseline + kTrigRise) {
         armed = true;
-        refractoryMs = kRefractoryMs;
+        refractory = kRefractoryMs;
         Fire(Clamp(kVelFloor + 1.3f * (cv - baseline), kVelFloor, 1.f));
       }
     } else if (cv < baseline + kTrigRearm) {
@@ -363,15 +362,17 @@ static Channel chA, chB;
 
 void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out,
                    size_t size) {
+  float dtMs = 1000.f * static_cast<float>(size) / chA.sampleRate;
+  chA.PollTrigger(hw.GetCv(CV_1), dtMs);
+  chB.PollTrigger(hw.GetCv(CV_2), dtMs);
   chA.RenderBlock(out[0], size);
   chB.RenderBlock(out[1], size);
 }
 
 static void UpdateChannel(Channel& ch, Button button, Pot tunePot,
-                          Pot decayPot, Cv cv) {
+                          Pot decayPot) {
   ch.tune = hw.GetPot(tunePot);
   ch.decay = hw.GetPot(decayPot);
-  ch.PollTrigger(hw.GetCv(cv));
 
   if (hw.button[button].RisingEdge()) ch.longHandled = false;
 
@@ -464,8 +465,8 @@ int main(void) {
 
   while (1) {
     hw.ProcessControls();
-    UpdateChannel(chA, BUTTON_1, POT_1, POT_3, CV_1);
-    UpdateChannel(chB, BUTTON_2, POT_2, POT_4, CV_2);
+    UpdateChannel(chA, BUTTON_1, POT_1, POT_3);
+    UpdateChannel(chB, BUTTON_2, POT_2, POT_4);
     UpdateLed();
     System::Delay(1);
   }
