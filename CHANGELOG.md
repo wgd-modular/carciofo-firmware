@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.4.0](https://github.com/wgd-modular/carciofo-firmware/compare/v0.3.0...v0.4.0) (2026-10-17)
+
+
+### Features
+
+* Add a PDF manual built from the firmware READMEs ([#12](https://github.com/wgd-modular/carciofo-firmware/issues/12)) ([a8616c3](https://github.com/wgd-modular/carciofo-firmware/commit/a8616c3da05b9fce5c2ee4a8b26d9fc53dd919d1))
+* Add Eco, a clockable stereo delay ([#10](https://github.com/wgd-modular/carciofo-firmware/issues/10)) ([4e677cb](https://github.com/wgd-modular/carciofo-firmware/commit/4e677cbbb4bc7c56400f956791bbb0e455df8ee7))
+* Add Nembo, Clouds for the Carciofo ([#9](https://github.com/wgd-modular/carciofo-firmware/issues/9)) ([6c657f7](https://github.com/wgd-modular/carciofo-firmware/commit/6c657f74c37dec56176e8d19eaa9879c22835e39))
+
 ## [0.3.0](https://github.com/wgd-modular/carciofo-firmware/compare/v0.2.0...v0.3.0) (2026-09-21)
 
 
