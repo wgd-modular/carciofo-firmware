@@ -1,0 +1,25 @@
+[workspace]
+name = "carciofo-firmware"
+description = "Firmwares for the Carciofo Eurorack module"
+authors = ["Felix Wiegand <fxwiegand@googlemail.com>"]
+channels = ["conda-forge", "memfault"]
+platforms = ["linux-64", "osx-64", "osx-arm64"]
+
+[dependencies]
+xpack-gcc-arm-none-eabi = { version = "13.3.1.*", channel = "memfault" }
+make = ">=4.4"
+python = ">=3.12"
+
+[tasks.build-libs]
+description = "Build libDaisy and DaisySP"
+cmd = "python build_firmwares.py --libs"
+
+[tasks.build]
+description = "Build all firmwares, or only the one named"
+args = [{ arg = "firmware", default = "" }]
+cmd = "python build_firmwares.py {{ firmware }}"
+depends-on = ["build-libs"]
+
+[tasks.clean]
+description = "Remove all build output, including the libraries"
+cmd = "python build_firmwares.py --clean"

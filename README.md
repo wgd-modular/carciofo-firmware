@@ -35,26 +35,23 @@ This step is only required if you want to modify a firmware or create your own. 
 git clone --recursive https://github.com/wgd-modular/carciofo-firmware
 ```
 
-Next you run the provided script to compile the libraries:
+If you cloned without `--recursive`, fetch them afterwards with `git submodule update --init --recursive`.
+
+Everything else, the ARM GCC toolchain, `make` and Python included, is managed by [pixi](https://pixi.sh), so nothing has to be installed system-wide apart from pixi itself. It works the same on Linux and macOS (Intel and Apple Silicon); on Windows use WSL. To compile all firmwares run:
 
 ```shell
-./build_libs.sh
+pixi run build
 ```
 
-Finally, if you want to compile all firmwares you can run the provided Python script:
+The first run sets up the toolchain and compiles both libraries, later runs reuse them. To compile one specific firmware, pass its name:
 
 ```shell
-python ./build_firmwares.py
+pixi run build reverb
 ```
 
-If instead you want to compile one specific firmware, you should change your working directory to that of the firmware and execute the Makefile. For example:
+This places the firmware in `src/reverb/build/reverb.bin`, ready for the web flasher. `pixi run build-libs` only rebuilds the libraries, and `pixi run clean` removes all build output again.
 
-```shell
-cd src/reverb
-make
-```
-
-This will compile the reverb firmware and place its output in the `build` subdirectory.
+When working on a single firmware it can be handy to drop into the environment with `pixi shell` and call `make` inside the firmware's folder directly.
 
 
 ## Writing a firmware

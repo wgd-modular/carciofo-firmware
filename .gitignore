@@ -206,3 +206,6 @@ tags
 
 .idea
 .vscode
+
+# pixi environments
+.pixi/
