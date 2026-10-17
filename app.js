@@ -120,6 +120,12 @@ async function render() {
       { day: "numeric", month: "long", year: "numeric" });
     $("#release-chip").textContent = `latest release ${release.tag_name} · ${date}`;
 
+    const manual = release.assets.find(a => a.name === "carciofo-manual.pdf");
+    if (manual) {
+      $("#manual a").href = manual.browser_download_url;
+      $("#manual").hidden = false;
+    }
+
     const bins = release.assets
       .filter(a => a.name.endsWith(".bin"))
       .sort((a, b) => {
