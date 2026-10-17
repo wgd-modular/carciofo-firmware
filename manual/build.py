@@ -24,6 +24,10 @@ REPO = os.environ.get("GITHUB_REPOSITORY", "wgd-modular/carciofo-firmware")
 
 HEADING = re.compile(r"^(#{1,6})\s+(.*?)\s*#*\s*$")
 FENCE = re.compile(r"^\s*(```|~~~)")
+# Firmwares for building and checking a module rather than playing it. They
+# come last, after the instruments, like on the web flasher.
+TOOLS = {"hardware-test"}
+
 LOGINS = {}
 NOREPLY = re.compile(r"^(?:\d+\+)?([^@]+)@users\.noreply\.github\.com$")
 
@@ -152,7 +156,10 @@ def history(folder):
 
 def collect():
     firmwares = []
-    for readme in sorted((ROOT / "src").glob("*/README.md")):
+    readmes = sorted((ROOT / "src").glob("*/README.md"),
+                     key=lambda path: (path.parent.name in TOOLS,
+                                       path.parent.name))
+    for readme in readmes:
         folder = readme.parent
         title, intro, sections = parse_readme(readme.read_text())
         firmwares.append({
@@ -162,6 +169,7 @@ def collect():
             "summary": summary(intro, sections),
             "sections": sections,
             "path": str(folder.relative_to(ROOT)),
+            "tool": folder.name in TOOLS,
             "history": history(folder),
         })
 
@@ -177,9 +185,12 @@ def collect():
 
     manifest = json.loads((ROOT / ".release-please-manifest.json").read_text())
     head = git("log", "-1", "--format=%H%x1f%cs").strip().split("\x1f")
+    version = manifest.get(".")
+    tags = git("tag", "--points-at", "HEAD").split()
     return {
         "repo": REPO,
-        "version": manifest.get("."),
+        "version": version,
+        "release": "v{}".format(version) in tags,
         "commit": head[0][:7],
         "date": head[1],
         "built": datetime.date.today().isoformat(),

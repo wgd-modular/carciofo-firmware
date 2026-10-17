@@ -22,10 +22,41 @@
 #let serif = "Fraunces"
 #let sans = "Work Sans"
 
-#let maiolica(size: 21mm) = tiling(size: (size, size),
+#let maiolica(size: 21mm) = tiling(size: (size, size), relative: "self",
   image("assets/pattern.svg", width: size, height: size))
-#let sawtooth = tiling(size: (13mm, 3.84mm),
-  image("assets/sawtooth.svg", width: 13mm, height: 3.84mm))
+
+// The band from the flasher's hero: a cobalt line with triangles in the four
+// glazes above and below it. Drawn here rather than tiled, so it has no
+// seams. A triangle sits on every grout joint of 14 mm and 21 mm tiles.
+#let band-unit = 3.5mm
+#let band-tip = band-unit * 9 / 22
+#let band-line = band-unit * 8 / 22
+#let band-height = 2 * band-tip + band-line
+#let band(width: 148mm) = box(width: width, height: band-height, clip: true, {
+  let glazes = (terracotta, limone, verde, teal)
+  let lap = 0.2mm
+  let (u, t, l) = (band-unit, band-tip, band-line)
+  for i in range(int(calc.ceil(width / u)) + 1) {
+    let x = i * u - u / 2
+    let fill = glazes.at(calc.rem(i, glazes.len()))
+    place(top + left, polygon(fill: fill,
+      (x, t + lap), (x + u, t + lap), (x + u / 2, 0pt)))
+    place(top + left, polygon(fill: fill,
+      (x, t + l - lap), (x + u, t + l - lap), (x + u / 2, band-height)))
+  }
+  place(top + left, dy: t, rect(width: 100%, height: l, fill: cobalt))
+})
+
+// Tiles from the top of the page down to `bottom`, ending on a whole row.
+// The band's line covers that edge, so only its tips reach into the tiles.
+#let tiled-head(bottom, size: 21mm, width: 148mm) = {
+  let rows = calc.ceil(bottom / size)
+  place(top + left, dy: bottom - rows * size,
+    rect(width: width, height: rows * size, fill: maiolica(size: size)))
+  place(top + left, dy: bottom - band-tip, band(width: width))
+}
+
+#let eyebrow = state("eyebrow", none)
 
 #let diamond(fill: limone, size: 4pt) = box(rotate(45deg,
   rect(width: size, height: size, fill: fill)))
@@ -108,12 +139,15 @@
   pagebreak(weak: true)
   context {
     let colour = accent.get()
-    place(top + left, dx: -15mm, dy: -19mm, block(width: 148mm, {
-      rect(width: 100%, height: 27mm, fill: maiolica(size: 15mm))
-      v(-4.5mm)
-      rect(width: 100%, height: 3.84mm, fill: sawtooth)
-    }))
-    v(17mm)
+    let head = 28mm
+    place(top + left, dx: -15mm, dy: -19mm,
+      box(width: 148mm, height: head, tiled-head(head, size: 14mm)))
+    v(head + band-height - band-tip - 19mm + 6mm)
+    let kicker = eyebrow.get()
+    if kicker != none {
+      block(below: 2.2mm, text(size: 7pt, weight: 600, tracking: 0.14em,
+        fill: colour, upper(kicker)))
+    }
     block(below: 6mm, {
       text(size: 24pt, weight: 600, fill: colour.darken(15%), it.body)
     })
@@ -129,23 +163,38 @@
   sticky: true, text(size: 10pt, weight: 600, fill: ink, it.body))
 
 // A boxed panel in the style of the flasher's plaques.
-#let plaque(colour: cobalt, inset: 4mm, body) = block(
-  width: 100%, fill: cream-soft, radius: 3mm, stroke: 1.1pt + colour,
-  inset: 1.2mm, block(width: 100%, radius: 2.2mm,
-    stroke: 0.5pt + limone, inset: inset, body))
+// It stays on one page unless it is too tall for that.
+#let plaque(colour: cobalt, inset: 4mm, body) = context {
+  let inner = block(width: 100%, radius: 2.2mm, stroke: 0.5pt + limone,
+    inset: inset, body)
+  let height = measure(inner, width: 118mm - 2.4mm).height
+  block(width: 100%, fill: cream-soft, radius: 3mm, stroke: 1.1pt + colour,
+    inset: 1.2mm, breakable: height > 140mm, inner)
+}
 
 // ----------------------------------------------------------------- cover
 
-#page(margin: 0pt, header: none, footer: none, fill: none,
-  background: rect(width: 100%, height: 100%, fill: maiolica()))[
-  #place(bottom + left, rect(width: 100%, height: 3.84mm, fill: sawtooth))
-  #place(top + right, dx: -13mm, dy: 16mm,
-    block(stroke: 2pt + cream-soft, radius: 1.5mm, clip: true,
-      image("assets/panel.png", height: 172mm)))
-  #place(top + left, dx: 11mm, dy: 30mm, block(width: 80mm, {
-    block(fill: cream-soft, radius: 6mm, stroke: 2pt + cobalt, inset: 1.6mm,
-      block(width: 100%, radius: 4.6mm, stroke: 1pt + limone,
-        inset: (x: 6mm, top: 8mm, bottom: 7mm), align(center, {
+#let tiles-end = 189mm
+// One artichoke of the 21 mm tiles. Everything laid over the tiles starts and
+// ends on this grid, so no edge cuts through an artichoke.
+#let cell = 10.5mm
+#let foot(body) = place(top + left, dy: tiles-end + band-line,
+  block(width: 100%, height: 210mm - tiles-end - band-line,
+    align(center + horizon, body)))
+
+#page(margin: 0pt, header: none, footer: none, fill: cream-soft)[
+  #tiled-head(tiles-end)
+  #foot(text(font: serif, size: 10pt, style: "italic", fill: cobalt-deep,
+    tracking: 0.04em)[wgd modular])
+  #place(top + left, dx: 9 * cell, dy: cell, block(width: 4 * cell,
+    height: 16 * cell - 1mm, fill: cream-soft, radius: 3mm,
+    stroke: 2pt + cobalt, align(center + horizon,
+      image("assets/panel.png", height: 16 * cell - 6mm))))
+  #place(top + left, dx: cell, dy: 3 * cell, block(width: 7 * cell, {
+    block(height: 10 * cell, fill: cream-soft, radius: 6mm,
+      stroke: 2pt + cobalt, inset: 1.6mm,
+      block(width: 100%, height: 100%, radius: 4.6mm, stroke: 1pt + limone,
+        inset: (x: 5mm), align(center + horizon, {
           image("assets/mark.svg", width: 15mm)
           v(1mm)
           text(font: serif, size: 31pt, weight: 650,
@@ -157,13 +206,14 @@
           line(length: 30%, stroke: 0.6pt + limone)
           v(3mm)
           set text(size: 8pt, fill: ink-soft)
-          [A 6 HP Daisy module by wgd modular, with every firmware it
-            runs and how to play them.]
+          [The 6 HP Daisy module by wgd modular and every firmware it
+            runs.]
           v(4.5mm)
           box(fill: cream, radius: 2mm, inset: (x: 3.2mm, y: 2mm),
             stroke: 0.5pt + cobalt.lighten(60%),
             text(size: 7.5pt, weight: 600, fill: cobalt)[
-              #if data.version != none [Release #data.version · ]
+              #if data.release [Release #data.version · ] else [
+                Development build · ]
               #month(data.date)])
         })))
   }))
@@ -193,7 +243,8 @@
   #plaque(colour: verde, inset: 3.5mm)[
     #set text(size: 7.5pt, fill: ink-soft)
     This manual is put together from the firmware descriptions in the
-    #link("https://github.com/" + data.repo)[carciofo-firmware] repository,
+    #box(link("https://github.com/" + data.repo)[carciofo-firmware])
+    repository,
     so it always matches the firmwares it ships with. It was built from
     commit #raw(data.commit) of #month(data.date).
   ]
@@ -210,9 +261,10 @@
     set text(size: 8.5pt)
     set par(spacing: 0.85em)
     [Carciofo is a 6 HP Eurorack module around the Electro-Smith Daisy
-      Seed, a small Arm Cortex-M7 board made for audio, and the successor
-      of the Löwenzahnhonig. What it does is defined entirely by the
-      firmware it runs, and you can flash a different one at any time.]
+      Seed, a small Arm Cortex-M7 board made for audio. It follows the
+      Löwenzahnhonig, wgd modular's earlier Daisy module. What it does is
+      defined entirely by the firmware it runs, and you can flash a
+      different one at any time.]
     v(1mm)
     let item(name, body) = block(below: 2.6mm, {
       text(font: serif, weight: 600, size: 9.5pt, fill: cobalt-deep, name)
@@ -241,8 +293,20 @@ while a button is held. They use soft pickup: after switching layers a knob
 only takes over once it is turned through the value it last had, so
 nothing jumps.
 
-Audio runs at 48 kHz in stereo. Every firmware chapter lists its controls
-in a table, followed by what the LED tells you.
+Each firmware chapter describes its controls, most of them in a table, and
+what the LED shows while you play.
+
+== Specifications
+
+#table(columns: (auto, 1fr),
+  table.header([Feature], [Details]),
+  [Format], [Eurorack, 6 HP],
+  [Platform], [Electro-Smith Daisy Seed, Arm Cortex-M7],
+  [Audio], [Stereo in and out, 48 kHz],
+  [Controls], [Four knobs, two buttons, one RGB LED],
+  [CV inputs], [Two, ±5 V],
+  [Firmware], [Changed over USB from the browser, see the next chapter],
+)
 ]
 
 // -------------------------------------------------------------- flashing
@@ -281,25 +345,32 @@ cd carciofo-firmware
 pixi run build doppio
 ```
 
-This builds a single firmware into `src/doppio/build/doppio.bin`, without a
-name all firmwares are built. `pixi run manual` builds this manual.
+This builds a single firmware into `src/doppio/build/doppio.bin`. Leave
+out the name to build all of them, and `pixi run manual` builds this
+manual.
 ]
 
 // ------------------------------------------------------------- firmwares
 
+#let colour-of(fw) = accents.at(calc.rem(
+  data.firmwares.position(other => other.id == fw.id), accents.len()))
+#let instruments = data.firmwares.filter(fw => not fw.tool)
+#let tools = data.firmwares.filter(fw => fw.tool)
+
 #themed(verde)[
 = Firmwares
 
-#let count = data.firmwares.len()
+#let count = instruments.len()
 #let words = ("No", "One", "Two", "Three", "Four", "Five", "Six", "Seven",
   "Eight", "Nine", "Ten", "Eleven", "Twelve")
 #(if count < words.len() { words.at(count) } else { str(count) })
-#(if count == 1 [firmware is] else [firmwares are]) part of this release.
-Each has its own chapter, written by the people who made it.
+#(if count == 1 [firmware turns] else [firmwares turn]) the Carciofo into an
+instrument or effect. Each has its own chapter with all of its controls#(
+  if tools.len() > 0 [, followed by the firmware for checking a freshly built
+  module]).
 
-#v(3mm)
-#for (i, fw) in data.firmwares.enumerate() {
-  let colour = accents.at(calc.rem(i, accents.len()))
+#let entry(fw) = {
+  let colour = colour-of(fw)
   block(below: 4.2mm, breakable: false, grid(
     columns: (1fr, 8mm), column-gutter: 3mm,
     {
@@ -312,11 +383,22 @@ Each has its own chapter, written by the people who made it.
       context str(counter(page).at(label(fw.id)).first()))),
   ))
 }
+
+#v(3mm)
+#for fw in instruments { entry(fw) }
+
+#if tools.len() > 0 {
+  v(3mm)
+  block(below: 3mm, text(size: 7pt, weight: 600, tracking: 0.14em,
+    fill: verde, upper[For builders]))
+  for fw in tools { entry(fw) }
+}
 ]
 
-#for (i, fw) in data.firmwares.enumerate() {
-  let colour = accents.at(calc.rem(i, accents.len()))
+#for fw in data.firmwares {
+  let colour = colour-of(fw)
   themed(colour, {
+    eyebrow.update(if fw.tool [For builders] else [Firmware])
     [#heading(level: 1, fw.title) #label(fw.id)]
 
     if fw.history != none {
@@ -331,6 +413,7 @@ Each has its own chapter, written by the people who made it.
       let key(body) = text(weight: 600, fill: colour, body)
       block(below: 5mm, {
         set text(size: 7.5pt, fill: ink-soft)
+        show raw: set text(size: 7.5pt)
         grid(columns: (auto, 1fr), column-gutter: 3mm, row-gutter: 1.6mm,
           key[By], people.join(", "),
           key[Added], month(h.added),
@@ -357,13 +440,15 @@ Each has its own chapter, written by the people who made it.
 
 // ------------------------------------------------------------ back cover
 
-#page(margin: 0pt, header: none, footer: none, fill: none,
-  background: rect(width: 100%, height: 100%, fill: maiolica()))[
-  #place(top + left, rect(width: 100%, height: 3.84mm, fill: sawtooth))
-  #place(center + horizon, block(width: 92mm,
-    block(fill: cream-soft, radius: 5mm, stroke: 2pt + cobalt, inset: 1.6mm,
-      block(width: 100%, radius: 3.6mm, stroke: 1pt + limone, inset: 7mm,
-        align(center, {
+#page(margin: 0pt, header: none, footer: none, fill: cream-soft)[
+  #tiled-head(tiles-end)
+  #foot(text(size: 8pt, fill: cobalt,
+    link("https://github.com/" + data.repo, "github.com/" + data.repo)))
+  #place(top + left, dx: 3 * cell, dy: 6 * cell, block(width: 8 * cell,
+    block(height: 6 * cell, fill: cream-soft, radius: 5mm,
+      stroke: 2pt + cobalt, inset: 1.6mm,
+      block(width: 100%, height: 100%, radius: 3.6mm, stroke: 1pt + limone,
+        inset: (x: 7mm), align(center + horizon, {
           image("assets/mark.svg", width: 11mm)
           v(2mm)
           text(font: serif, size: 15pt, weight: 600,
@@ -373,8 +458,5 @@ Each has its own chapter, written by the people who made it.
           [The firmwares and this manual are open source under the MIT
             license. Fraunces and Work Sans are licensed under the SIL Open
             Font License.]
-          v(2mm)
-          link("https://github.com/" + data.repo,
-            "github.com/" + data.repo)
         })))))
 ]
