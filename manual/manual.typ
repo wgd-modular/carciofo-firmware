@@ -187,9 +187,9 @@
   #foot(text(font: serif, size: 10pt, style: "italic", fill: cobalt-deep,
     tracking: 0.04em)[wgd modular])
   #place(top + left, dx: 9 * cell, dy: cell, block(width: 4 * cell,
-    height: 16 * cell - 1mm, fill: cream-soft, radius: 3mm,
-    stroke: 2pt + cobalt, align(center + horizon,
-      image("assets/panel.png", height: 16 * cell - 6mm))))
+    height: 16 * cell, align(center + horizon,
+      block(stroke: 2pt + cream-soft, radius: 1.5mm, clip: true,
+        image("assets/panel.png", height: 16 * cell - 4mm)))))
   #place(top + left, dx: cell, dy: 3 * cell, block(width: 7 * cell, {
     block(height: 10 * cell, fill: cream-soft, radius: 6mm,
       stroke: 2pt + cobalt, inset: 1.6mm,
