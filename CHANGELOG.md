@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/wgd-modular/carciofo-firmware/compare/v0.4.0...v0.4.1) (2026-10-18)
+
+
+### Bug Fixes
+
+* Read the CV inputs as 0 V to +5 V ([#17](https://github.com/wgd-modular/carciofo-firmware/issues/17)) ([f6776f6](https://github.com/wgd-modular/carciofo-firmware/commit/f6776f6fc996b9171737d095510f17aba6c47709))
+
 ## [0.4.0](https://github.com/wgd-modular/carciofo-firmware/compare/v0.3.0...v0.4.0) (2026-10-17)
 
 
