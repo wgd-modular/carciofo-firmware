@@ -54,7 +54,9 @@ class Carciofo {
 
   float GetPot(Pot pot) { return seed.adc.GetFloat(pot); }
 
-  /** The CV inputs are inverted by their input stage. */
+  /** The CV inputs take 0 V to +5 V and read as 0 to 1. Their input stage is
+      inverting, this flips it back. Negative voltages and an unpatched jack
+      read as 0, anything above +5 V as 1. */
   float GetCv(Cv cv) { return 1.f - seed.adc.GetFloat(cv); }
 
   /** A pot with its CV input summed on top, clamped to 0..1. */

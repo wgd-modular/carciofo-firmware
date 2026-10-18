@@ -4,7 +4,7 @@ Turns the Carciofo into a percussive synth voice — a stack of six morphing osc
 
 ## Description
 
-A trigger on CV1 fires the voice; its height sets the velocity. Six oscillators are tuned to a harmonic series that Spread bends toward the inharmonic, each one Morphing continuously from sine through triangle and saw to square. Harmonics decides how many modes sound and how long the upper ones ring — from a single tone, to a fast modal blip over the body, to a long ringing stack. The sum is driven into a folder and shaped by an attack/decay envelope, and the envelope is laid back over the folded signal so a heavily folded hit keeps its punch. CV2 is a pitch input, summed with the Pitch knob a couple of octaves either way.
+A trigger on CV1 fires the voice; its height sets the velocity. Six oscillators are tuned to a harmonic series that Spread bends toward the inharmonic, each one Morphing continuously from sine through triangle and saw to square. Harmonics decides how many modes sound and how long the upper ones ring — from a single tone, to a fast modal blip over the body, to a long ringing stack. The sum is driven into a folder and shaped by an attack/decay envelope, and the envelope is laid back over the folded signal so a heavily folded hit keeps its punch. CV2 is a 1 V/oct pitch input on top of the Pitch knob, up to five octaves higher at +5 V.
 
 Three modes, stepped with B1:
 
@@ -25,7 +25,7 @@ Two layers. Hold B2 to reach the second one; a knob only takes hold once it is t
 | P3 | Fold | Attack (noise · pop · slow) |
 | P4 | Decay | Noise |
 | CV1 | Trigger in | |
-| CV2 | Pitch (1V/oct-ish) | |
+| CV2 | Pitch, 1 V/oct from 0 V to +5 V | |
 | B1 | Step mode | |
 | B2 | Hold for the second layer | |
 

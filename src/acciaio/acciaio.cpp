@@ -348,8 +348,8 @@ static void TrackPots() {
 
 static void ApplyControls() {
   float base = Expo(primary[0], 24.f, 3000.f);
-  float oct = (hw.GetCv(CV_2) - 0.5f) * 4.f;
-  freqTarget = base * exp2f(oct);
+  float oct = hw.GetCv(CV_2) * 5.f;  // 1 V/oct over 0 V to +5 V
+  freqTarget = Clamp(base * exp2f(oct), 20.f, 16000.f);
   morphTarget = primary[1];
   foldTarget = primary[2];
 

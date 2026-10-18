@@ -101,7 +101,7 @@ int main(void) {
 }
 ```
 
-`ProcessControls()` debounces both buttons and pushes the staged LED colour, so it belongs at the top of the main loop. `GetPot()` and `GetCv()` hand back 0 to 1, `GetPotWithCv()` sums the two and clamps. The buttons are plain libDaisy `Switch` objects, the LED takes either RGB or HSV.
+`ProcessControls()` debounces both buttons and pushes the staged LED colour, so it belongs at the top of the main loop. `GetPot()` and `GetCv()` hand back 0 to 1, `GetPotWithCv()` sums the two and clamps. The CV inputs take 0 V to +5 V: 0 V reads as 0 and +5 V as 1. Negative voltages and an unpatched jack read as 0, so a CV summed onto a pot adds nothing until something is patched. The buttons are plain libDaisy `Switch` objects, the LED takes either RGB or HSV.
 
 
 ## Contributing

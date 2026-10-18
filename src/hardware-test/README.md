@@ -12,5 +12,5 @@ On power up the LED runs through red, green, blue and white so all three channel
 The same readings go out over USB serial four times a second if you want the actual numbers:
 
 ```
-P1 +0.501 P2 +0.000 P3 +1.000 P4 +0.250 CV1 +0.500 CV2 +0.500 B1 0 B2 0
+P1 +0.501 P2 +0.000 P3 +1.000 P4 +0.250 CV1 +0.000 CV2 +0.000 B1 0 B2 0
 ```

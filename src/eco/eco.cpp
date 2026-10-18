@@ -186,8 +186,7 @@ static void UpdateControls() {
   float p2 = hw.GetPot(POT_2);
   float p3 = hw.GetPot(POT_3);
   float p4 = hw.GetPot(POT_4);
-  float cv2 = hw.GetCv(CV_2) - 0.5f;  // bipolar around the idle reading
-  if (fabsf(cv2) < 0.02f) cv2 = 0.f;
+  float cv2 = hw.GetCv(CV_2);
 
   float feedback;
   float smoodge;

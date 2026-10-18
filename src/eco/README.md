@@ -13,7 +13,7 @@ The delay time is a division or multiplication of the tempo. Set the tempo with 
 | P3 | Delay time as a ratio of the tempo (see below) |
 | P4 | Smoodge — stereo width, then wow, flutter, saturation and tremolo |
 | CV1 | Clock in — sets the tempo from the time between pulses |
-| CV2 | Adds to feedback, or to smoodge (see B2); centred, so an unpatched jack does nothing |
+| CV2 | Adds to feedback, or to smoodge (see B2); 0 V to +5 V, an unpatched jack adds nothing |
 | B1 | Tap tempo — tap in rhythm to set the delay time |
 | B2 | Tap to freeze the buffer; hold to switch CV2 between feedback and smoodge |
 | In L/R | Stereo audio in (normal In L to In R in hardware for a mono source) |

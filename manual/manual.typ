@@ -273,8 +273,8 @@
     })
     item[P1 to P4][Four knobs, their job depends on the firmware.]
     item[CV1, CV2][Control voltage inputs for modulation, gates, clocks
-      or triggers, ±5 V. An unpatched input sits in the middle of its
-      range.]
+      or triggers, 0 V to +5 V. Negative voltages read as 0 V, and so does
+      an unpatched input.]
     item[B1, B2][Two buttons, to switch modes, tap a tempo, freeze or
       reach a second layer of the knobs. A short and a long press often do
       different things.]
@@ -304,7 +304,7 @@ what the LED shows while you play.
   [Platform], [Electro-Smith Daisy Seed, Arm Cortex-M7],
   [Audio], [Stereo in and out, 48 kHz],
   [Controls], [Four knobs, two buttons, one RGB LED],
-  [CV inputs], [Two, ±5 V],
+  [CV inputs], [Two, 0 V to +5 V],
   [Firmware], [Changed over USB from the browser, see the next chapter],
 )
 ]
