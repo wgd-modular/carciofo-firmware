@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/wgd-modular/carciofo-firmware/compare/v0.5.0...v0.5.1) (2026-10-18)
+
+
+### Bug Fixes
+
+* **tocco:** Keep the lowpass stable at high resonance ([#20](https://github.com/wgd-modular/carciofo-firmware/issues/20)) ([eefc7c9](https://github.com/wgd-modular/carciofo-firmware/commit/eefc7c9e149db9698ec62e439a718220f176cb5f))
+
 ## [0.5.0](https://github.com/wgd-modular/carciofo-firmware/compare/v0.4.1...v0.5.0) (2026-10-18)
 
 
