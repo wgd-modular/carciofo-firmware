@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/wgd-modular/carciofo-firmware/compare/v0.4.1...v0.5.0) (2026-10-18)
+
+
+### Features
+
+* Add tocco firmware  ([#16](https://github.com/wgd-modular/carciofo-firmware/issues/16)) ([820287c](https://github.com/wgd-modular/carciofo-firmware/commit/820287c6aacc5bdf77ae1b842c242aa056ca40f7))
+
 ## [0.4.1](https://github.com/wgd-modular/carciofo-firmware/compare/v0.4.0...v0.4.1) (2026-10-18)
 
 
