@@ -209,3 +209,4 @@ tags
 
 # pixi environments
 .pixi/
+.DS_Store

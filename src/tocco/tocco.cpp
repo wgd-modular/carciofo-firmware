@@ -227,8 +227,12 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out,
   highPos += blockSmooth * (highTarget - highPos);
   lowWet = Clamp(lowPos / kFilterFade, 0.f, 1.f);
   highWet = Clamp(highPos / kFilterFade, 0.f, 1.f);
-  lowpass.SetFreq(Expo(lowPos, 16000.f, 60.f));
-  highpass.SetFreq(Expo(highPos, 20.f, 6000.f));
+  // The Svf goes unstable above about 13 kHz at high resonance, so the
+  // lowpass tops out at 12 kHz, still well past audible once faded out.
+  float lowFreq = Expo(lowPos, 12000.f, 60.f);
+  float highFreq = Expo(highPos, 20.f, 6000.f);
+  lowpass.SetFreq(lowFreq);
+  highpass.SetFreq(highFreq);
   lowpass.SetRes(lowResTarget);
   highpass.SetRes(highResTarget);
 
@@ -260,6 +264,20 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out,
     float sideOut = Saturate(side, drive[1]);
     sideOut = eqHigh[1].Process(eqMid[1].Process(eqLow[1].Process(sideOut)));
     out[0][i] = main + sideOut * sideMix;
+
+    // Last line of defence: a filter that ever blows up is reset on the spot
+    // instead of leaving the output silent until the next reset.
+    if (!std::isfinite(out[0][i])) {
+      for (Svf* f : {&lowpass, &highpass}) f->Init(sr);
+      lowpass.SetFreq(lowFreq);
+      highpass.SetFreq(highFreq);
+      lowpass.SetRes(lowResTarget);
+      highpass.SetRes(highResTarget);
+      for (int c = 0; c < 2; c++)
+        for (Biquad* b : {&eqLow[c], &eqMid[c], &eqHigh[c]}) b->z1 = b->z2 = 0.f;
+      envelope = 0.f;
+      out[0][i] = 0.f;
+    }
   }
 
   limiter.ProcessBlock(out[0], size, kLimiterGain);
