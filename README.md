@@ -2,7 +2,7 @@
 
 A repository to collect different firmwares for the daisy-based Carciofo module, the 6hp successor of the [Löwenzahnhonig](https://github.com/wgd-modular/loewenzahnhonig-firmware). Same four pots and two CV inputs, plus two buttons and an RGB LED.
 
-<img src="media/DSC00453.JPG" height="500">
+<img src="media/carciofo.jpg" height="500">
 
 
 ## Flash your module
