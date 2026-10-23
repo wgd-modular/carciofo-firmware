@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/wgd-modular/carciofo-firmware/compare/v0.5.1...v0.6.0) (2026-10-23)
+
+
+### Features
+
+* Keep the firmwares' settings across power cycles ([#22](https://github.com/wgd-modular/carciofo-firmware/issues/22)) ([104be94](https://github.com/wgd-modular/carciofo-firmware/commit/104be94151bb388569eb63b476ef4d9b06e6c383))
+
 ## [0.5.1](https://github.com/wgd-modular/carciofo-firmware/compare/v0.5.0...v0.5.1) (2026-10-18)
 
 
