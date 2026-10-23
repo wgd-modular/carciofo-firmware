@@ -22,3 +22,7 @@ Freeze mutes the send into the tank and takes the feedback to unity, so whatever
 Both buttons latch, press again to leave. The tone pot has no effect while the tank is frozen.
 
 The LED sits on the decay, cyan into violet while the reverb is plain and yellow into red once the shimmer is in. Brightness follows the wet level. A frozen tail overrides all of that with a slow breath, white on its own and amber with the shimmer running.
+
+## Saved settings
+
+Whether the shimmer is on comes back after a power cycle, saved two seconds after you switch it. A freeze ends with the power, there is no tail left to hold. Hold both buttons while powering up to go back to the defaults, shimmer off.

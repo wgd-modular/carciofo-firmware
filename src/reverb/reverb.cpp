@@ -1,6 +1,7 @@
 #include <cmath>
 
 #include "../../lib/carciofo.h"
+#include "../../lib/settings.h"
 #include "daisysp.h"
 
 using namespace daisy;
@@ -60,6 +61,14 @@ static PitchShifter DSY_SDRAM_BSS octaveRight;
 static DcBlock dcLeft, dcRight;
 
 static bool frozen, shimmering;
+
+// The shimmer comes back after a power cycle. The freeze does not, there is
+// no tail left to hold.
+struct Saved {
+  int32_t shimmering;
+  bool operator==(const Saved& o) const { return shimmering == o.shimmering; }
+};
+static Settings<Saved> settings;
 static float dryLevel, wetLevel;
 static float sendTarget = 1.f, shimmerTarget;
 static float send = 1.f, shimmer;
@@ -127,6 +136,9 @@ int main(void) {
   dcLeft.Init(sampleRate);
   dcRight.Init(sampleRate);
 
+  settings.Init(hw, SLOT_REVERB, 1, Saved{0});
+  shimmering = settings.Get().shimmering != 0;
+
   hw.StartAudio(AudioCallback);
 
   while (1) {
@@ -158,6 +170,8 @@ int main(void) {
     shimmerTarget = shimmering ? kShimmerSend : 0.f;
 
     UpdateLed(decay);
+    settings.Get().shimmering = shimmering;
+    settings.Process();
     System::Delay(1);
   }
 }

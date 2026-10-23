@@ -33,6 +33,10 @@ Pitch sets the fundamental. Morph sweeps the waveform. Fold drives the wavefolde
 
 Stepping the mode or holding B2 fires the voice once, so you always hear the change.
 
+## Saved settings
+
+The mode and the four values on the B2 layer come back after a power cycle, saved two seconds after you last change them. The pots of the default layer are read where they stand. Hold both buttons while powering up to go back to the defaults.
+
 ## LED
 
 - **On power up** it sweeps red, green, blue, white, so you know the firmware is running.

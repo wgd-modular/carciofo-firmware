@@ -1,6 +1,7 @@
 #include <cmath>
 
 #include "../../lib/carciofo.h"
+#include "../../lib/settings.h"
 #include "daisysp.h"
 
 using namespace daisy;
@@ -28,7 +29,7 @@ using namespace carciofo;
  * so a pot only takes hold once it has been turned back through its stored
  * value, the same soft pickup quattro uses. Nothing jumps.
  *
- * Every pot value and the current layer are saved to the QSPI flash a few
+ * Every pot value and the current layer are saved to the QSPI flash two
  * seconds after the last change and come back at power up. Holding both
  * buttons while powering up resets everything to the neutral patch.
  */
@@ -42,16 +43,6 @@ static const float kSmoothing = 0.0005f;
 static const float kCatchEps = 0.02f;
 static const float kMoveEps = 0.004f;
 static const uint32_t kEditHoldMs = 1100;
-
-// Saving waits this long after the last change so a turn costs one write, not
-// hundreds, and only a change bigger than the pot jitter counts as one.
-static const uint32_t kSaveDelayMs = 3000;
-static const float kSaveEps = 0.01f;
-
-// Far up the 8 MB QSPI so it stays clear of programs the Daisy bootloader puts
-// at the start. Bump the version whenever Settings changes shape.
-static const uint32_t kStorageOffset = 0x700000;
-static const uint32_t kSettingsVersion = 1;
 
 // The EQ's fixed shape: shelves at 100 Hz and 8 kHz, a mid bell of Q 1 swept
 // from 150 Hz to 8 kHz, every band +-15 dB with flat at noon.
@@ -118,33 +109,20 @@ static float lastRaw[kNumPots];
 
 static int layer = FX_LEVEL;
 
-struct Settings {
-  uint32_t version;
+struct Saved {
   int32_t layer;
   float knob[kNumFx][kNumPots];
 
-  bool operator!=(const Settings& o) const {
-    if (version != o.version || layer != o.layer) return true;
-    for (int f = 0; f < kNumFx; f++)
-      for (int p = 0; p < kNumPots; p++)
-        if (fabsf(knob[f][p] - o.knob[f][p]) > kSaveEps) return true;
-    return false;
+  bool operator==(const Saved& o) const {
+    return layer == o.layer && SameKnobs(&knob[0][0], &o.knob[0][0],
+                                         kNumFx * kNumPots);
   }
 };
+static Settings<Saved> settings;
 
-static PersistentStorage<Settings> storage(hw.seed.qspi);
-
-// The QSPI window is cached and PersistentStorage only invalidates it when the
-// program runs outside internal flash, so do it here before it compares.
-static void InvalidateStorageCache() {
-  dsy_dma_invalidate_cache_for_buffer(
-      static_cast<uint8_t*>(hw.seed.qspi.GetData(kStorageOffset)),
-      sizeof(Settings) + sizeof(uint32_t));
-}
 static int activePot;
 static uint32_t lastMoveTime;
 static uint32_t catchFlashTime;
-static uint32_t saveFlashTime;
 
 static inline float Lerp(float a, float b, float t) { return a + (b - a) * t; }
 
@@ -338,12 +316,6 @@ static void UpdateLed() {
     return;
   }
 
-  // A short green blip confirms the patch went to flash.
-  if (saveFlashTime && now - saveFlashTime < 250) {
-    hw.led.Set(0.f, 0.6f, 0.f);
-    return;
-  }
-
   // A pot turned in the last moment shows its value, blinking until caught.
   if (now - lastMoveTime < kEditHoldMs) {
     float value = 0.12f + 0.88f * knob[layer][activePot];
@@ -367,30 +339,6 @@ static void EnterLayer(int next) {
   }
 }
 
-/* Writes the patch once it has stopped changing. The write blocks the control
-   loop for a moment, the audio keeps running underneath. */
-static void SaveWhenSettled() {
-  static Settings pending;
-  static uint32_t lastChange;
-  Settings now;
-  now.version = kSettingsVersion;
-  now.layer = layer;
-  for (int f = 0; f < kNumFx; f++)
-    for (int p = 0; p < kNumPots; p++) now.knob[f][p] = knob[f][p];
-
-  if (now != pending) {
-    pending = now;
-    lastChange = System::GetNow();
-  }
-  if (System::GetNow() - lastChange > kSaveDelayMs &&
-      pending != storage.GetSettings()) {
-    storage.GetSettings() = pending;
-    InvalidateStorageCache();
-    storage.Save();
-    saveFlashTime = System::GetNow();
-  }
-}
-
 int main(void) {
   hw.Init();
   lowpass.Init(hw.SampleRate());
@@ -399,41 +347,20 @@ int main(void) {
   attackCoef = 1.f - expf(-1000.f / (kDuckAttackMs * hw.SampleRate()));
 
   // The neutral patch: unity level, no drive, flat eq, filters open, no duck.
-  static const Settings kDefaults = {kSettingsVersion,
-                                     FX_LEVEL,
-                                     {
-                                         {0.50f, 0.00f, 0.50f, 0.00f},  // level
-                                         {0.50f, 0.50f, 0.50f, 0.50f},  // eq
-                                         {0.00f, 0.00f, 0.00f, 0.00f},  // filter
-                                         {0.25f, 0.00f, 0.30f, 1.00f},  // ducker
-                                     }};
-  InvalidateStorageCache();
-  storage.Init(kDefaults, kStorageOffset);
-
-  // Both buttons held at power up, or a save from an older layout, start over.
-  // The pins get a moment to settle and a full debounce, so a slow pull up at
-  // power on never reads as a press.
-  System::Delay(100);
-  for (int i = 0; i < 20; i++) {
-    hw.button[BUTTON_1].Debounce();
-    hw.button[BUTTON_2].Debounce();
-    System::Delay(1);
-  }
-  bool reset = hw.button[BUTTON_1].Pressed() && hw.button[BUTTON_2].Pressed();
-  if (reset || storage.GetSettings().version != kSettingsVersion)
-    storage.RestoreDefaults();
-  if (reset) {
-    hw.led.Set(1.f, 1.f, 1.f);
-    hw.led.Update();
-    System::Delay(400);
-  }
+  static const Saved kDefaults = {FX_LEVEL,
+                                  {
+                                      {0.50f, 0.00f, 0.50f, 0.00f},  // level
+                                      {0.50f, 0.50f, 0.50f, 0.50f},  // eq
+                                      {0.00f, 0.00f, 0.00f, 0.00f},  // filter
+                                      {0.25f, 0.00f, 0.30f, 1.00f},  // ducker
+                                  }};
+  settings.Init(hw, SLOT_TOCCO, 1, kDefaults);
 
   // The flash is not trusted blindly, anything out of range falls back.
-  const Settings& saved = storage.GetSettings();
+  const Saved& saved = settings.Get();
   for (int f = 0; f < kNumFx; f++) {
     for (int p = 0; p < kNumPots; p++) {
-      float v = saved.knob[f][p];
-      knob[f][p] = (v >= 0.f && v <= 1.f) ? v : kDefaults.knob[f][p];
+      knob[f][p] = ValidKnob(saved.knob[f][p], kDefaults.knob[f][p]);
     }
   }
   for (int p = 0; p < kNumPots; p++)
@@ -476,7 +403,10 @@ int main(void) {
 
     ApplyControls();
     UpdateLed();
-    SaveWhenSettled();
+    settings.Get().layer = layer;
+    for (int f = 0; f < kNumFx; f++)
+      for (int p = 0; p < kNumPots; p++) settings.Get().knob[f][p] = knob[f][p];
+    settings.Process();
     System::Delay(1);
   }
 }

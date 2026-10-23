@@ -296,6 +296,18 @@ nothing jumps.
 Each firmware chapter describes its controls, most of them in a table, and
 what the LED shows while you play.
 
+== Saved settings
+
+The firmwares remember what you set with the buttons and on the layers you
+reach by holding a button, and bring it back after a power cycle. They save
+on their own, two seconds after your last change, so there is nothing to
+press. Knobs on the main layer are simply read where they stand. Every
+firmware keeps its own settings, so flashing another one and coming back
+later loses nothing.
+
+To go back to a firmware's defaults, hold both buttons while powering up. The
+LED lights white until you let go. Each firmware chapter lists what it keeps.
+
 == Specifications
 
 #table(columns: (auto, 1fr),

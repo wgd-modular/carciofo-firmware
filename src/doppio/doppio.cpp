@@ -2,6 +2,7 @@
 #include <cstdint>
 
 #include "../../lib/carciofo.h"
+#include "../../lib/settings.h"
 #include "daisysp.h"
 
 extern "C" float powf(float base, float power) {
@@ -360,6 +361,21 @@ struct Channel {
 static Carciofo hw;
 static Channel chA, chB;
 
+struct Saved {
+  int32_t model[2];
+  int32_t flavor[2];
+  bool operator==(const Saved& o) const {
+    return model[0] == o.model[0] && model[1] == o.model[1] &&
+           flavor[0] == o.flavor[0] && flavor[1] == o.flavor[1];
+  }
+};
+static Settings<Saved> settings;
+
+static void Restore(Channel& ch, int model, int flavor) {
+  ch.model = model >= 0 && model < kNumModels ? model : KICK;
+  ch.flavor = flavor >= 0 && flavor < kNumFlavors ? flavor : FLAVOR_808;
+}
+
 void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out,
                    size_t size) {
   float dtMs = 1000.f * static_cast<float>(size) / chA.sampleRate;
@@ -460,6 +476,12 @@ int main(void) {
   chA.Init(sampleRate);
   chB.Init(sampleRate);
 
+  settings.Init(hw, SLOT_DOPPIO, 1,
+                Saved{{KICK, KICK}, {FLAVOR_808, FLAVOR_808}});
+  const Saved& saved = settings.Get();
+  Restore(chA, saved.model[0], saved.flavor[0]);
+  Restore(chB, saved.model[1], saved.flavor[1]);
+
   RunBootSweep();
   hw.StartAudio(AudioCallback);
 
@@ -468,6 +490,8 @@ int main(void) {
     UpdateChannel(chA, BUTTON_1, POT_1, POT_3);
     UpdateChannel(chB, BUTTON_2, POT_2, POT_4);
     UpdateLed();
+    settings.Get() = Saved{{chA.model, chB.model}, {chA.flavor, chB.flavor}};
+    settings.Process();
     System::Delay(1);
   }
 }

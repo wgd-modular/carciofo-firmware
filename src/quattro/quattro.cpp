@@ -1,6 +1,7 @@
 #include <cmath>
 
 #include "../../lib/carciofo.h"
+#include "../../lib/settings.h"
 #include "daisysp.h"
 
 using namespace daisy;
@@ -93,6 +94,17 @@ static bool caught[kNumFx][kNumLayers];
 static float lastRaw[kNumFx];
 
 static Layer layer = LAYER_CHARACTER;
+
+// The two shifted layers come back after a power cycle, the character layer
+// is wherever the pots are.
+struct Saved {
+  float motion[kNumFx];
+  float mix[kNumFx];
+  bool operator==(const Saved& o) const {
+    return SameKnobs(motion, o.motion, kNumFx) && SameKnobs(mix, o.mix, kNumFx);
+  }
+};
+static Settings<Saved> settings;
 static int activeFx;
 static uint32_t lastMoveTime;
 static uint32_t catchFlashTime;
@@ -286,19 +298,21 @@ int main(void) {
   reverb.Init(sampleRate);
 
   /* Boot straight onto the pots for the character layer, so what you see is
-     what you hear, and onto a gentle stock patch for the two shifted layers.
-     The character layer is caught from the start, the others wait to be picked
-     up. */
-  static const float kMotionBoot[kNumFx] = {0.70f, 0.35f, 0.35f, 0.60f};
-  static const float kMixBoot[kNumFx] = {0.00f, 0.20f, 0.22f, 0.35f};
+     what you hear, and onto the saved shifted layers, a gentle stock patch the
+     first time. The character layer is caught from the start, the others wait
+     to be picked up. */
+  static const Saved kBoot = {{0.70f, 0.35f, 0.35f, 0.60f},
+                              {0.00f, 0.20f, 0.22f, 0.35f}};
+  settings.Init(hw, SLOT_QUATTRO, 1, kBoot);
+  const Saved& saved = settings.Get();
   for (int f = 0; f < kNumFx; f++) {
     float raw = hw.GetPot(static_cast<Pot>(f));
     knob[f][LAYER_CHARACTER] = raw;
-    knob[f][LAYER_MOTION] = kMotionBoot[f];
-    knob[f][LAYER_MIX] = kMixBoot[f];
+    knob[f][LAYER_MOTION] = ValidKnob(saved.motion[f], kBoot.motion[f]);
+    knob[f][LAYER_MIX] = ValidKnob(saved.mix[f], kBoot.mix[f]);
     caught[f][LAYER_CHARACTER] = true;
     lastRaw[f] = raw;
-    mix[f] = mixTarget[f] = kMixBoot[f];
+    mix[f] = mixTarget[f] = knob[f][LAYER_MIX];
   }
   ApplyControls();
 
@@ -337,6 +351,11 @@ int main(void) {
 
     ApplyControls();
     UpdateLed();
+    for (int f = 0; f < kNumFx; f++) {
+      settings.Get().motion[f] = knob[f][LAYER_MOTION];
+      settings.Get().mix[f] = knob[f][LAYER_MIX];
+    }
+    settings.Process();
     System::Delay(1);
   }
 }

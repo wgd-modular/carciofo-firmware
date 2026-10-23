@@ -63,13 +63,14 @@ hunted for and blips white the moment it lands.
 ## Saved settings
 
 Every pot value on every layer, and the layer you were on, is saved to the
-Daisy's flash a few seconds after the last change and comes back at power up.
+Daisy's flash two seconds after the last change and comes back at power up.
 Since the pots no longer match what was saved, every layer waits to be picked
 up, so the patch you hear after power up is exactly the one you left.
 
-To start over, hold both buttons while powering up. The LED flashes white and
-everything goes back to neutral: unity level, no drive, flat EQ, both filters
-open (fully left), no ducking, threshold low, in 2 mixed in at unity.
+To start over, hold both buttons while powering up. The LED lights white until
+you let go, and everything goes back to neutral: unity level, no drive, flat
+EQ, both filters open (fully left), no ducking, threshold low, in 2 mixed in at
+unity.
 
 ## LED
 
@@ -77,8 +78,6 @@ open (fully left), no ducking, threshold low, in 2 mixed in at unity.
   filter blue, ducker violet.
 - **Turning a pot** shows the layer colour with the brightness on the value,
   blinking until the pot is caught.
-- **A short green blip** a few seconds after the last change means the patch
-  was saved.
 
 ## Controls
 

@@ -36,6 +36,10 @@ The output is fully wet by default and always soft-clipped, as on Clouds. Hold B
 
 Position is where in the buffer the grains are taken from — fully counter-clockwise is the most recent audio, clockwise travels back in time. Pitch has a small unison zone around the centre so a roughly centred pot is exactly unison. Tap B2 or raise CV2 to freeze the buffer and play the captured audio with the pots; each rising edge on CV2 also fires a single grain, so a clock into CV2 with density low turns the module into a trigger-driven micro-sampler.
 
+## Saved settings
+
+The mode, hi-fi or lo-fi and the four values on the B2 layer come back after a power cycle, saved two seconds after you last change them. The pots of the default layer are read where they stand, and a freeze ends with the power. Hold both buttons while powering up to go back to the defaults.
+
 ## LED
 
 - **Each mode** has its own colour; **lo-fi** desaturates it.
