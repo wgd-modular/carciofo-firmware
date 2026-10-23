@@ -103,6 +103,24 @@ int main(void) {
 
 `ProcessControls()` debounces both buttons and pushes the staged LED colour, so it belongs at the top of the main loop. `GetPot()` and `GetCv()` hand back 0 to 1, `GetPotWithCv()` sums the two and clamps. The CV inputs take 0 V to +5 V: 0 V reads as 0 and +5 V as 1. Negative voltages and an unpatched jack read as 0, so a CV summed onto a pot adds nothing until something is patched. The buttons are plain libDaisy `Switch` objects, the LED takes either RGB or HSV.
 
+Settings that should survive a power cycle go through `lib/settings.h`. A firmware describes them in a small struct, loads it once at power up and keeps it up to date in the main loop; saving happens on its own two seconds after the last change, and holding both buttons while powering up brings back the defaults:
+
+```cpp
+struct Saved {
+  int32_t mode;
+  bool operator==(const Saved& o) const { return mode == o.mode; }
+};
+Settings<Saved> settings;
+
+settings.Init(hw, SLOT_MYFIRMWARE, 1, Saved{0});  // before StartAudio()
+mode = settings.Get().mode;
+
+settings.Get().mode = mode;            // in the main loop
+settings.Process();
+```
+
+Every firmware has its own slot in the flash, so a new firmware adds one to `SettingsSlot` in `lib/settings.h`. Save what the knobs cannot show, like modes and the values on held layers, and let the main layer follow the pots.
+
 
 ## Contributing
 

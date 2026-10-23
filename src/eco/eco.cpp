@@ -2,6 +2,7 @@
 #include <cstdint>
 
 #include "../../lib/carciofo.h"
+#include "../../lib/settings.h"
 #include "daisysp.h"
 
 extern "C" float powf(float base, float power) {
@@ -98,7 +99,21 @@ static uint32_t beatFlash = 0;
 static uint32_t confirmFlash = 0;
 static uint32_t prevNow = 0;
 
-static void RegisterBeat(uint32_t now) {
+// What comes back after a power cycle. Only a tapped tempo is kept, a clock
+// sets it again by itself and would otherwise be saved every few beats.
+struct Saved {
+  int32_t cv2ControlsFeedback;
+  float tappedSecs;
+  bool operator==(const Saved& o) const {
+    return cv2ControlsFeedback == o.cv2ControlsFeedback &&
+           fabsf(tappedSecs - o.tappedSecs) < 0.001f;
+  }
+};
+static Settings<Saved> settings;
+static float tappedSecs = 0.5f;
+
+static bool RegisterBeat(uint32_t now) {
+  bool measured = false;
   if (lastBeat != 0) {
     uint32_t iv = now - lastBeat;
     if (iv >= kMinIntervalMs && iv <= kMaxIntervalMs) {
@@ -108,6 +123,7 @@ static void RegisterBeat(uint32_t now) {
       uint32_t sum = 0;
       for (int i = 0; i < ivCount; i++) sum += ivBuf[i];
       delayTimeSecs = (static_cast<float>(sum) / ivCount) / 1000.f;
+      measured = true;
     } else if (iv > kMaxIntervalMs) {
       ivCount = 0;
       ivIdx = 0;
@@ -115,6 +131,7 @@ static void RegisterBeat(uint32_t now) {
   }
   lastBeat = now;
   beatFlash = now;
+  return measured;
 }
 
 static void PollClock(uint32_t now) {
@@ -136,7 +153,8 @@ static void PollClock(uint32_t now) {
 }
 
 static void PollButtons(uint32_t now) {
-  if (hw.button[BUTTON_1].RisingEdge()) RegisterBeat(now);
+  if (hw.button[BUTTON_1].RisingEdge() && RegisterBeat(now))
+    tappedSecs = delayTimeSecs;
 
   if (hw.button[BUTTON_2].RisingEdge()) {
     b2PressStart = now;
@@ -337,6 +355,14 @@ int main(void) {
   flutter.SetAmp(0.f);
   flutter.SetFreq(0.05f);
 
+  settings.Init(hw, SLOT_ECO, 1, Saved{1, 0.5f});
+  const Saved& saved = settings.Get();
+  cv2ControlsFeedback = saved.cv2ControlsFeedback != 0;
+  if (saved.tappedSecs >= kMinIntervalMs / 1000.f &&
+      saved.tappedSecs <= kMaxIntervalMs / 1000.f)
+    tappedSecs = saved.tappedSecs;
+  delayTimeSecs = tappedSecs;
+
   RunBootSweep();
   prevNow = System::GetNow();
   hw.StartAudio(AudioCallback);
@@ -351,6 +377,12 @@ int main(void) {
     PollButtons(now);
     UpdateControls();
     UpdateLed(now, dtMs);
+
+    settings.Get() = Saved{cv2ControlsFeedback, tappedSecs};
+    settings.Process();
+    // A save that had to erase a sector holds this loop up for a moment, so
+    // the clock interval across it is not measured.
+    if (System::GetNow() - now > 20) lastBeat = 0;
     System::Delay(1);
   }
 }

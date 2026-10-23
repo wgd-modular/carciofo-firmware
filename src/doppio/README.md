@@ -38,6 +38,10 @@ A short press on the button steps to the next model and wraps around. A long pre
 
 Tune sets the pitch of the drum, the metallic pitch on the hat and the noise colour on the clap. Decay sets its length, which on the hat is the difference between closed and open.
 
+## Saved settings
+
+Each voice's model and its 808 or 909 flavour come back after a power cycle, saved two seconds after you last change them. Hold both buttons while powering up to go back to two 808 kicks.
+
 ## LED
 
 One light shared by both voices.

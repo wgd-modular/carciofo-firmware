@@ -2,6 +2,7 @@
 #include <cstdint>
 
 #include "../../lib/carciofo.h"
+#include "../../lib/settings.h"
 #include "daisysp.h"
 
 using namespace daisy;
@@ -35,6 +36,15 @@ static const float kPrimeRatio[kPartials] = {1.f, 3.f, 5.f, 7.f, 11.f, 13.f};
 
 static const float kPrimaryBoot[4] = {0.42f, 0.30f, 0.20f, 0.42f};
 static const float kSecondaryBoot[4] = {0.20f, 0.55f, 0.50f, 0.00f};
+
+struct Saved {
+  int32_t mode;
+  float secondary[4];
+  bool operator==(const Saved& o) const {
+    return mode == o.mode && SameKnobs(secondary, o.secondary, 4);
+  }
+};
+static Settings<Saved> settings;
 
 static inline float Expo(float t, float lo, float hi) {
   return lo * powf(hi / lo, t);
@@ -458,12 +468,18 @@ int main(void) {
     amp[k] = k == 0 ? 1.f : 0.f;
     phase[k] = 0.f;
   }
+  Saved defaults = {SKIN, {}};
+  for (int i = 0; i < 4; i++) defaults.secondary[i] = kSecondaryBoot[i];
+  settings.Init(hw, SLOT_ACCIAIO, 1, defaults);
+  const Saved& saved = settings.Get();
+  mode = saved.mode >= 0 && saved.mode < kNumModes ? saved.mode : SKIN;
+
   for (int i = 0; i < 4; i++) {
     primary[i] = hw.GetPot(static_cast<Pot>(i == 0   ? POT_1
                                             : i == 1 ? POT_2
                                             : i == 2 ? POT_3
                                                      : POT_4));
-    secondary[i] = kSecondaryBoot[i];
+    secondary[i] = ValidKnob(saved.secondary[i], kSecondaryBoot[i]);
     caught[i] = true;
     lastPot[i] = primary[i];
   }
@@ -480,6 +496,9 @@ int main(void) {
     PollTrigger(hw.GetCv(CV_1));
     ApplyControls();
     UpdateLed();
+    settings.Get().mode = mode;
+    for (int i = 0; i < 4; i++) settings.Get().secondary[i] = secondary[i];
+    settings.Process();
     System::Delay(1);
   }
 }

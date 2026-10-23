@@ -23,6 +23,10 @@ P3 ratios, counter-clockwise to clockwise: /8, /4, /3, /2, /1.5, x1, x2, x3, x4,
 
 Freeze locks the current buffer into an endless loop with the input muted, so you can lift your source and keep the echo going, or hold a texture under a new part. Tap B2 again to release it. Hold B2 to flip what CV2 does: by default CV2 pushes the feedback up alongside P1; in the other mode it drives the smoodge instead, so an envelope or LFO can open up the tape effects.
 
+## Saved settings
+
+What CV2 controls and a tempo tapped in on B1 come back after a power cycle, saved two seconds after the last change. A tempo from a clock is not saved, it is back as soon as the clock runs, and a freeze ends with the power. Hold both buttons while powering up to go back to the defaults.
+
 ## LED
 
 - **Idle**: a dim breathing glow. Its colour tracks the delay ratio — blue for the long, multiplied settings, green around unison, red for the short, divided ones.

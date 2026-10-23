@@ -1,6 +1,7 @@
 #include <math.h>
 
 #include "../../lib/carciofo.h"
+#include "../../lib/settings.h"
 #include "daisysp.h"
 #include "granular_processor.h"
 
@@ -88,6 +89,20 @@ static bool b1LongHandled = false;
 static uint32_t b2PressStart = 0;
 static uint32_t flashTime = 0;
 static bool reinit = false;
+
+// What comes back after a power cycle: the mode, the buffer quality and the
+// shift layer. The primary layer is wherever the pots are, and a frozen buffer
+// is gone with the power anyway.
+struct Saved {
+  int32_t mode;
+  int32_t lofi;
+  float secondary[4];
+  bool operator==(const Saved& o) const {
+    return mode == o.mode && lofi == o.lofi &&
+           SameKnobs(secondary, o.secondary, 4);
+  }
+};
+static Settings<Saved> settings;
 
 static float PotAt(int i) {
   return hw.GetPot(static_cast<Pot>(i));
@@ -221,8 +236,15 @@ int main(void) {
   InitResources(sampleRate);
   processor.Init(sampleRate, block_mem, sizeof(block_mem), block_ccm,
                  sizeof(block_ccm));
-  processor.set_playback_mode(PLAYBACK_MODE_GRANULAR);
-  processor.set_quality(0);
+
+  Saved defaults = {PLAYBACK_MODE_GRANULAR, 0, {}};
+  for (int i = 0; i < 4; i++) defaults.secondary[i] = kShiftBoot[i];
+  settings.Init(hw, SLOT_NEMBO, 1, defaults);
+  const Saved& saved = settings.Get();
+  if (saved.mode >= 0 && saved.mode < PLAYBACK_MODE_LAST) mode = saved.mode;
+  lofi = saved.lofi != 0;
+  processor.set_playback_mode(static_cast<PlaybackMode>(mode));
+  processor.set_quality(lofi ? 3 : 0);
 
   parameters = processor.mutable_parameters();
   parameters->dry_wet = 1.f;
@@ -233,7 +255,7 @@ int main(void) {
 
   for (int i = 0; i < 4; i++) {
     primary[i] = PotAt(i);
-    secondary[i] = kShiftBoot[i];
+    secondary[i] = ValidKnob(saved.secondary[i], kShiftBoot[i]);
     caught[i] = true;
     lastPot[i] = primary[i];
   }
@@ -251,6 +273,10 @@ int main(void) {
       processor.set_quality(lofi ? 3 : 0);
     }
     UpdateLed();
+    settings.Get().mode = mode;
+    settings.Get().lofi = lofi;
+    for (int i = 0; i < 4; i++) settings.Get().secondary[i] = secondary[i];
+    settings.Process();
     processor.Prepare();
   }
 }

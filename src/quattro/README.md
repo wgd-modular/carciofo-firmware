@@ -43,6 +43,10 @@ it lands.
 Both sit on top of their pot and stay live no matter which layer you are on, so
 you can keep a hand on the character controls and still sweep them from a patch.
 
+## Saved settings
+
+The motion and mix layers come back after a power cycle, saved two seconds after you last change them, and wait to be picked up like after any layer switch. The character layer is read from the pots. Hold both buttons while powering up to go back to the stock patch.
+
 ## LED
 
 One light doing a lot of work.
