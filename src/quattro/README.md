@@ -23,6 +23,10 @@ mix at zero is a real bypass and all four mixes down is a clean thru. Out of the
 box the mix layer sits on a gentle stock patch, a little chorus and delay under
 a soft reverb, drive off, so there is something to hear before you touch it.
 
+The drive stays at least as loud as the clean signal even with its amount all
+the way down, so bringing up its wet always adds drive instead of just turning
+the sound down.
+
 If both buttons are held, B2 wins.
 
 ## Soft pickup

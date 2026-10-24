@@ -182,7 +182,9 @@ static float TrackPot(int fx, float raw) {
 // and its feedback go through the smoothed targets, everything else sets a
 // coefficient and can go straight in.
 static void ApplyControls() {
-  float driveAmt = knob[FX_DRIVE][LAYER_CHARACTER];
+  // The drive only gets quieter below a quarter, and silent at zero, so the
+  // pot starts there: bringing up its mix never just drops the level.
+  float driveAmt = 0.25f + 0.75f * knob[FX_DRIVE][LAYER_CHARACTER];
   driveLeft.SetDrive(driveAmt);
   driveRight.SetDrive(driveAmt);
 
