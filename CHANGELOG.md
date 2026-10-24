@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.1](https://github.com/wgd-modular/carciofo-firmware/compare/v0.6.0...v0.6.1) (2026-10-24)
+
+
+### Bug Fixes
+
+* **quattro:** Keep the drive from going quiet at low amounts ([#24](https://github.com/wgd-modular/carciofo-firmware/issues/24)) ([41782a9](https://github.com/wgd-modular/carciofo-firmware/commit/41782a9fa8aface2ea3e7000e3fbb23318885dba))
+
 ## [0.6.0](https://github.com/wgd-modular/carciofo-firmware/compare/v0.5.1...v0.6.0) (2026-10-23)
 
 
