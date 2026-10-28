@@ -42,6 +42,7 @@ enum SettingsSlot {
   SLOT_NEMBO,
   SLOT_QUATTRO,
   SLOT_REVERB,
+  SLOT_CODA,
 };
 
 static const float kKnobEps = 0.01f;
