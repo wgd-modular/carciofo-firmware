@@ -9,6 +9,7 @@ platforms = ["linux-64", "osx-64", "osx-arm64"]
 xpack-gcc-arm-none-eabi = { version = "13.3.1.*", channel = "memfault" }
 make = ">=4.4"
 python = ">=3.12"
+patch = ">=2.8,<3"
 
 [tasks.build-libs]
 description = "Build libDaisy and DaisySP"

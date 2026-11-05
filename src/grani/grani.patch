@@ -1,0 +1,114 @@
+Grani's changes to Beads and stmlib, applied to a copy of lib/eurorack in
+build/upstream by the Makefile. The codec runs at 48 kHz in dirty tape too,
+the firmware can fade out grains when the processor runs out of time, and
+the sine and pitch tables are filled at power up (tables.cpp) to save flash.
+
+--- a/beads/dsp/granular_player.h
++++ b/beads/dsp/granular_player.h
+@@ -126,6 +126,24 @@
+     *pan = BoundedRandomFloat(pan_spread);
+   }
+   
++  // Carciofo: fades out the grains closest to their end, used when the
++  // processor runs out of time.
++  inline void Shed(int count) {
++    for (int n = 0; n < count; ++n) {
++      T* victim = NULL;
++      for (int i = 0; i < num_grains; ++i) {
++        T* g = &grain_[i];
++        if (!g->done() && g->remaining_samples() > instant_crossfade_time_ &&
++            (!victim ||
++             g->remaining_samples() < victim->remaining_samples())) {
++          victim = g;
++        }
++      }
++      if (!victim) return;
++      victim->FadeOut(instant_crossfade_time_);
++    }
++  }
++
+   inline T* new_grain() { return grain_priority_list_[0]; }
+   
+   inline void Tick() {
+--- a/beads/dsp/granular_processor.h
++++ b/beads/dsp/granular_processor.h
+@@ -76,6 +76,8 @@
+     input_limiter_.Init(1.0f / sample_rate, 0.95f);
+   }
+   
++  inline void ShedGrains(int count) { granular_player_.Shed(count); }
++
+   inline void Reset() {
+     mono_delay_line_.Reset();
+     stereo_delay_line_.Reset();
+--- a/beads/dsp/processor.cc
++++ b/beads/dsp/processor.cc
+@@ -66,6 +66,24 @@
+   delay_mode_transition_ = -kDelayModeTransitionTime;
+ }
+ 
++// Carciofo: lets the firmware thin out the grains under heavy load.
++void Processor::ShedGrains(int count) {
++  switch (media_) {
++    case MEDIA_DIGITAL:
++      processor_digital_.ShedGrains(count);
++      break;
++    case MEDIA_VINTAGE_DIGITAL:
++      processor_vintage_digital_.ShedGrains(count);
++      break;
++    case MEDIA_CLEAN_TAPE:
++      processor_clean_tape_.ShedGrains(count);
++      break;
++    case MEDIA_DIRTY_TAPE:
++      processor_dirty_tape_.ShedGrains(count);
++      break;
++  }
++}
++
+ void Processor::Configure(Media media, bool mono) {
+   media_ = media;
+   mono_ = mono;
+--- a/beads/dsp/processor.h
++++ b/beads/dsp/processor.h
+@@ -43,7 +43,7 @@
+ // When this flag is not set, the codec is run at 48kHz and the wet signal is
+ // downsampled by a 0.5 factor before being processed. Low-pass filtering
+ // is also applied to the output signal within the wow and flutter code.
+-#define ENABLE_HARDWARE_24K
++// #define ENABLE_HARDWARE_24K
+ 
+ namespace beads {
+ 
+@@ -71,6 +71,7 @@
+   
+   void Init(uint8_t* buffers[], uint16_t* reverb_buffer);
+   void Configure(Media media, bool mono);
++  void ShedGrains(int count);
+   
+   inline Media media() const { return media_; }
+   inline bool mono() const { return mono_; }
+   
+--- a/beads/resources.h
++++ b/beads/resources.h
+@@ -50,7 +50,7 @@
+ 
+ extern const int16_t* wavetables_table[];
+ 
+-extern const float lut_sine[];
++extern float lut_sine[];
+ extern const int16_t wav_integrated_waves[];
+ #define LUT_SINE 0
+ #define LUT_SINE_SIZE 1281
+--- a/stmlib/dsp/units.h
++++ b/stmlib/dsp/units.h
+@@ -34,8 +34,8 @@
+ 
+ namespace stmlib {
+ 
+-extern const float lut_pitch_ratio_high[257];
+-extern const float lut_pitch_ratio_low[257];
++extern float lut_pitch_ratio_high[257];
++extern float lut_pitch_ratio_low[257];
+ 
+ inline float SemitonesToRatio(float semitones) {
+   float pitch = semitones + 128.0f;
