@@ -36,7 +36,7 @@ One side of the modules front panel has a generic labelling. This table contains
 
 # Compilation
 
-This step is only required if you want to modify a firmware or create your own. The firmwares depend on the `libDaisy` and `DaisySP` development libraries by Electro-Smith. These are added as submodules to this repository and are most easily fetched when initially cloning the repository as follows:
+This step is only required if you want to modify a firmware or create your own. The firmwares depend on the `libDaisy` and `DaisySP` development libraries by Electro-Smith, and Grani on Émilie Gillet's [eurorack](https://github.com/pichenettes/eurorack) code for Beads. These are added as submodules to this repository and are most easily fetched when initially cloning the repository as follows:
 
 ```shell
 git clone --recursive https://github.com/wgd-modular/carciofo-firmware

@@ -9,6 +9,7 @@
 #include "stmlib/dsp/dsp.h"
 #include "stmlib/utils/gate_flags.h"
 #include "stmlib/utils/random.h"
+#include "tables.h"
 
 using namespace carciofo;
 using namespace beads;
@@ -784,9 +785,7 @@ static void Setup() {
   memset(bank2, 0, sizeof(bank2));
   memset(reverbBuffer, 0, sizeof(reverbBuffer));
   memset(static_cast<void*>(&processor), 0, sizeof(processor));
-  InitResources();
-  InitMuLaw();
-  stmlib::InitUnits();
+  InitTables();
   InitProcessor();
 
   settings.Init(hw, SLOT_GRANI, 1, kDefaults);
