@@ -25,10 +25,11 @@ inline float Clamp(float value, float lower, float upper) {
 class Carciofo {
  public:
   /** The default block size leaves room for the bit banged LED, which holds
-      interrupts off for about 30us whenever it refreshes. */
-  void Init(size_t block_size = 16) {
+      interrupts off for about 30us whenever it refreshes. Boost runs the
+      core at 480 MHz instead of 400 MHz. */
+  void Init(size_t block_size = 16, bool boost = false) {
     seed.Configure();
-    seed.Init();
+    seed.Init(boost);
     seed.SetAudioBlockSize(block_size);
 
     daisy::AdcChannelConfig adc[kNumAnalogControls];
